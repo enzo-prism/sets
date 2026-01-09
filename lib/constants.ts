@@ -21,4 +21,6 @@ export const WORKOUT_TYPES = [
   "calf raises",
   "calf raises (seated)",
   "sauna",
+  "creatine",
+  "protein",
 ] as const

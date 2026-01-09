@@ -16,6 +16,7 @@ describe("workout mappings", () => {
   it("maps workout groups from types and values", () => {
     expect(getWorkoutGroupIdForType("plank")).toBe("core")
     expect(getWorkoutGroupIdForValue("pull up")).toBe("bar")
+    expect(getWorkoutGroupIdForType("creatine")).toBe("supplement")
     expect(getWorkoutGroupById("lower")?.label).toBe("Lower")
   })
 })

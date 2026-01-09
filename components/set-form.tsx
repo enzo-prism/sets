@@ -227,7 +227,7 @@ export function SetForm({
                       Category
                     </div>
                     <div
-                      className="flex gap-2 overflow-x-auto pb-1"
+                      className="flex flex-wrap gap-2 pb-1"
                       role="group"
                       aria-label="Workout category"
                     >
@@ -267,6 +267,9 @@ export function SetForm({
                             }
                           }}
                         >
+                          <span className="text-sm leading-none" aria-hidden>
+                            {group.emoji}
+                          </span>
                           {group.label}
                         </Button>
                       ))}

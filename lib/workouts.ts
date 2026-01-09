@@ -9,6 +9,7 @@ export type WorkoutOption = {
 export type WorkoutGroup = {
   id: string
   label: string
+  emoji: string
   items: WorkoutOption[]
 }
 
@@ -16,6 +17,7 @@ export const WORKOUT_GROUPS: WorkoutGroup[] = [
   {
     id: "upper",
     label: "Upper",
+    emoji: "💪",
     items: [
       { value: "bench press", label: "Bench press", workoutType: "bench press" },
       {
@@ -38,6 +40,7 @@ export const WORKOUT_GROUPS: WorkoutGroup[] = [
   {
     id: "lower",
     label: "Lower",
+    emoji: "🦵",
     items: [
       { value: "squat", label: "Squat", workoutType: "squat" },
       {
@@ -57,6 +60,7 @@ export const WORKOUT_GROUPS: WorkoutGroup[] = [
   {
     id: "power",
     label: "Power",
+    emoji: "⚡️",
     items: [
       { value: "hang clean", label: "Hang clean", workoutType: "hang clean" },
       { value: "clean-power", label: "Clean", workoutType: "clean" },
@@ -67,6 +71,7 @@ export const WORKOUT_GROUPS: WorkoutGroup[] = [
   {
     id: "core",
     label: "Core",
+    emoji: "🧘",
     items: [
       { value: "leg lifts", label: "Leg lifts", workoutType: "leg lifts" },
       { value: "plank", label: "Plank", workoutType: "plank" },
@@ -77,6 +82,7 @@ export const WORKOUT_GROUPS: WorkoutGroup[] = [
   {
     id: "bar",
     label: "Bar",
+    emoji: "🤸",
     items: [
       { value: "pull up", label: "Pull ups", workoutType: "pull up" },
       { value: "true bubka", label: "True bubka", workoutType: "true bubka" },
@@ -91,7 +97,17 @@ export const WORKOUT_GROUPS: WorkoutGroup[] = [
   {
     id: "recover",
     label: "Recover",
+    emoji: "♨️",
     items: [{ value: "sauna", label: "Sauna", workoutType: "sauna" }],
+  },
+  {
+    id: "supplement",
+    label: "Supplement",
+    emoji: "🧪",
+    items: [
+      { value: "creatine", label: "Creatine", workoutType: "creatine" },
+      { value: "protein", label: "Protein", workoutType: "protein" },
+    ],
   },
 ]
 
