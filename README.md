@@ -35,7 +35,7 @@ Required environment variables:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`)
 - `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`)
+- `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`). If omitted, the API route will fall back to the public anon/publishable key, which requires the `sets` table to allow anon access.
 
 The service role key is used only on the server via the API route in `app/api/sets/route.ts`.
 

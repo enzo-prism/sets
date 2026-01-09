@@ -65,7 +65,10 @@ export async function GET(request: Request) {
   const supabase = requireSupabase()
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase is not configured." },
+      {
+        error:
+          "Supabase is not configured. Missing SUPABASE_URL or server key.",
+      },
       { status: 500 }
     )
   }
@@ -95,7 +98,10 @@ export async function POST(request: Request) {
   const supabase = requireSupabase()
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase is not configured." },
+      {
+        error:
+          "Supabase is not configured. Missing SUPABASE_URL or server key.",
+      },
       { status: 500 }
     )
   }
@@ -131,7 +137,10 @@ export async function PATCH(request: Request) {
   const supabase = requireSupabase()
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase is not configured." },
+      {
+        error:
+          "Supabase is not configured. Missing SUPABASE_URL or server key.",
+      },
       { status: 500 }
     )
   }
@@ -173,7 +182,10 @@ export async function DELETE(request: Request) {
   const supabase = requireSupabase()
   if (!supabase) {
     return NextResponse.json(
-      { error: "Supabase is not configured." },
+      {
+        error:
+          "Supabase is not configured. Missing SUPABASE_URL or server key.",
+      },
       { status: 500 }
     )
   }
