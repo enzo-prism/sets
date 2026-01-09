@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { CalendarClock, Dumbbell, Repeat, Timer } from "lucide-react"
+import { CalendarClock, Clock, Dumbbell, Repeat, Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,10 +13,14 @@ import {
 import { Separator } from "@/components/ui/separator"
 import type { LoggedSet } from "@/lib/types"
 import { formatPt } from "@/lib/time"
+import { formatRestSeconds, getWorkoutFieldVisibility } from "@/lib/workout-config"
 import { SetCard } from "@/components/set-card"
 
 export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
   const [open, setOpen] = React.useState(false)
+  const { showWeight, showReps, showDuration } = getWorkoutFieldVisibility(
+    set.workoutType ?? null
+  )
 
   return (
     <>
@@ -36,27 +40,48 @@ export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
             </div>
             <Separator />
             <div className="grid gap-3">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Dumbbell className="h-4 w-4" />
-                  Weight
-                </span>
-                <span>{set.weightLb != null ? `${set.weightLb} lb` : "—"}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Repeat className="h-4 w-4" />
-                  Reps
-                </span>
-                <span>{set.reps != null ? set.reps : "—"}</span>
-              </div>
+              {showWeight ? (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Dumbbell className="h-4 w-4" />
+                    Weight
+                  </span>
+                  <span>
+                    {set.weightLb != null ? `${set.weightLb} lb` : "—"}
+                  </span>
+                </div>
+              ) : null}
+              {showReps ? (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Repeat className="h-4 w-4" />
+                    Reps
+                  </span>
+                  <span>{set.reps != null ? set.reps : "—"}</span>
+                </div>
+              ) : null}
+              {showDuration ? (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Clock className="h-4 w-4" />
+                    Duration
+                  </span>
+                  <span>
+                    {set.durationSeconds != null
+                      ? `${set.durationSeconds}s`
+                      : "—"}
+                  </span>
+                </div>
+              ) : null}
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-muted-foreground">
                   <Timer className="h-4 w-4" />
                   Rest
                 </span>
                 <span>
-                  {set.restSeconds != null ? `${set.restSeconds}s` : "—"}
+                  {set.restSeconds != null
+                    ? formatRestSeconds(set.restSeconds)
+                    : "—"}
                 </span>
               </div>
             </div>

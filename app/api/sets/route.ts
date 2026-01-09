@@ -16,6 +16,7 @@ const setInputSchema = z.object({
   weightLb: z.number().nullable().optional(),
   reps: z.number().int().nullable().optional(),
   restSeconds: z.number().int().nullable().optional(),
+  durationSeconds: z.number().int().nullable().optional(),
   performedAtISO: z.string().nullable().optional(),
 })
 
@@ -58,6 +59,7 @@ function buildSet(input: CreatePayload, nowIso: string): LoggedSet {
     weightLb: input.weightLb ?? null,
     reps: input.reps ?? null,
     restSeconds: input.restSeconds ?? null,
+    durationSeconds: input.durationSeconds ?? null,
     performedAtISO: input.performedAtISO ?? null,
     createdAtISO: nowIso,
     updatedAtISO: nowIso,
@@ -70,6 +72,7 @@ function buildUpdateRow(input: UpdatePayload, nowIso: string) {
     weight_lb: input.weightLb ?? null,
     reps: input.reps ?? null,
     rest_seconds: input.restSeconds ?? null,
+    duration_seconds: input.durationSeconds ?? null,
     performed_at_iso: input.performedAtISO ?? null,
     updated_at_iso: nowIso,
   }

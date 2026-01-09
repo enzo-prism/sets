@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import type { LoggedSet } from "@/lib/types"
 import { formatPt } from "@/lib/time"
 import { cn } from "@/lib/utils"
+import { buildSetStats } from "@/lib/workout-config"
 
 type SetCardProps = {
   set: LoggedSet
@@ -14,16 +15,7 @@ type SetCardProps = {
 }
 
 export function SetCard({ set, onClick, readOnly }: SetCardProps) {
-  const stats: string[] = []
-  if (set.weightLb != null) {
-    stats.push(`${set.weightLb} lb`)
-  }
-  if (set.reps != null) {
-    stats.push(`${set.reps} reps`)
-  }
-  if (set.restSeconds != null) {
-    stats.push(`${set.restSeconds}s rest`)
-  }
+  const stats = buildSetStats(set)
 
   return (
     <Button

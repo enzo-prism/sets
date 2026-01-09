@@ -7,6 +7,7 @@ type ExportedSet = {
   weight_lb: number | null
   reps: number | null
   rest_seconds: number | null
+  duration_seconds: number | null
   date_pt: string
   time_pt: string
   date_source: "performed" | "created"
@@ -40,6 +41,7 @@ export function formatSetsForClipboard(sets: LoggedSet[]) {
         weight_lb: set.weightLb ?? null,
         reps: set.reps ?? null,
         rest_seconds: set.restSeconds ?? null,
+        duration_seconds: set.durationSeconds ?? null,
         date_pt: toPtDateInput(sourceIso),
         time_pt: toPtTimeInput(sourceIso),
         date_source: dateSource,

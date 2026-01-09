@@ -42,6 +42,7 @@ import {
   toPtTimeInput,
 } from "@/lib/time"
 import { cn } from "@/lib/utils"
+import { formatRestSeconds, getWorkoutFieldVisibility } from "@/lib/workout-config"
 
 const WORKOUT_GROUPS = [
   {
@@ -49,7 +50,6 @@ const WORKOUT_GROUPS = [
     items: [
       { value: "bench press", label: "Bench press" },
       { value: "should press", label: "Shoulder press" },
-      { value: "pull up", label: "Pull up" },
       { value: "rear delt fly", label: "Rear delt fly" },
       { value: "cable face pull", label: "Cable face pull" },
     ],
@@ -59,6 +59,9 @@ const WORKOUT_GROUPS = [
     items: [
       { value: "squat", label: "Squat" },
       { value: "single leg squat", label: "Single leg squat" },
+      { value: "good morning", label: "Good morning" },
+      { value: "calf raises", label: "Calf raises" },
+      { value: "calf raises (seated)", label: "Calf raises (seated)" },
     ],
   },
   {
@@ -70,6 +73,28 @@ const WORKOUT_GROUPS = [
       { value: "snatch", label: "Snatch" },
     ],
   },
+  {
+    label: "Core",
+    items: [
+      { value: "leg lifts", label: "Leg lifts" },
+      { value: "plank", label: "Plank" },
+      { value: "toe touches", label: "Toe touches" },
+      { value: "bicycles", label: "Bicycles" },
+    ],
+  },
+  {
+    label: "Bar",
+    items: [
+      { value: "pull up", label: "Pull ups" },
+      { value: "true bubka", label: "True bubka" },
+      { value: "wipers", label: "Wipers" },
+      { value: "down pressure", label: "Down pressure" },
+    ],
+  },
+  {
+    label: "Recover",
+    items: [{ value: "sauna", label: "Sauna" }],
+  },
 ] as const
 
 const WORKOUT_VALUE_MAP = new Map<string, WorkoutType>([
@@ -80,11 +105,22 @@ const WORKOUT_VALUE_MAP = new Map<string, WorkoutType>([
   ["cable face pull", "cable face pull"],
   ["squat", "squat"],
   ["single leg squat", "single leg squat"],
+  ["good morning", "good morning"],
+  ["calf raises", "calf raises"],
+  ["calf raises (seated)", "calf raises (seated)"],
   ["hang clean", "hang clean"],
   ["clean", "clean"],
   ["clean-power", "clean"],
   ["hang snatch", "hang snatch"],
   ["snatch", "snatch"],
+  ["leg lifts", "leg lifts"],
+  ["plank", "plank"],
+  ["toe touches", "toe touches"],
+  ["bicycles", "bicycles"],
+  ["true bubka", "true bubka"],
+  ["wipers", "wipers"],
+  ["down pressure", "down pressure"],
+  ["sauna", "sauna"],
 ])
 
 function toSelectValue(workoutType?: WorkoutType | null) {
@@ -102,6 +138,7 @@ const formSchema = z.object({
   weightLb: z.string().nullable().optional(),
   reps: z.string().nullable().optional(),
   restSeconds: z.string().nullable().optional(),
+  durationSeconds: z.string().nullable().optional(),
   performedDate: z.string().nullable().optional(),
   performedTime: z.string().nullable().optional(),
 })
@@ -113,6 +150,7 @@ export type SetFormPayload = {
   weightLb: number | null
   reps: number | null
   restSeconds: number | null
+  durationSeconds: number | null
   performedAtISO: string | null
 }
 
@@ -129,6 +167,13 @@ function toNumber(value?: string | null) {
   }
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+function resolveWorkoutType(value?: string | null) {
+  if (!value || value === "none") {
+    return null
+  }
+  return WORKOUT_VALUE_MAP.get(value) ?? null
 }
 
 export function SetForm({
@@ -148,6 +193,10 @@ export function SetForm({
       restSeconds:
         initialValues?.restSeconds != null
           ? String(initialValues.restSeconds)
+          : "",
+      durationSeconds:
+        initialValues?.durationSeconds != null
+          ? String(initialValues.durationSeconds)
           : "",
       performedDate: initialValues?.performedAtISO
         ? toPtDateInput(initialValues.performedAtISO)
@@ -169,10 +218,9 @@ export function SetForm({
   }, [defaults, form])
 
   const onFormSubmit = async (values: FormValues) => {
-    const workoutValue =
-      values.workoutType && values.workoutType !== "none"
-        ? WORKOUT_VALUE_MAP.get(values.workoutType) ?? null
-        : null
+    const workoutValue = resolveWorkoutType(values.workoutType)
+    const { showWeight, showReps, showDuration } =
+      getWorkoutFieldVisibility(workoutValue)
     const performedAtISO =
       values.performedDate && values.performedTime
         ? ptDateToISO(values.performedDate, values.performedTime)
@@ -180,12 +228,24 @@ export function SetForm({
 
     await onSubmit({
       workoutType: workoutValue,
-      weightLb: toNumber(values.weightLb),
-      reps: toNumber(values.reps),
+      weightLb: showWeight ? toNumber(values.weightLb) : null,
+      reps: showReps ? toNumber(values.reps) : null,
       restSeconds: toNumber(values.restSeconds),
+      durationSeconds: showDuration ? toNumber(values.durationSeconds) : null,
       performedAtISO,
     })
   }
+
+  const selectedWorkout = useWatch({
+    control: form.control,
+    name: "workoutType",
+  })
+  const activeWorkoutType = React.useMemo(
+    () => resolveWorkoutType(selectedWorkout),
+    [selectedWorkout]
+  )
+  const { showWeight, showReps, showDuration } =
+    getWorkoutFieldVisibility(activeWorkoutType)
 
   const selectedDate = useWatch({
     control: form.control,
@@ -278,44 +338,69 @@ export function SetForm({
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="weightLb"
-                render={({ field }) => (
-                  <FormItem className="col-span-1">
-                    <FormLabel>Weight (lb)</FormLabel>
-                    <FormControl>
-                      <Input
-                        inputMode="decimal"
-                        placeholder="135"
-                        className="h-11"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="reps"
-                render={({ field }) => (
-                  <FormItem className="col-span-1">
-                    <FormLabel>Reps</FormLabel>
-                    <FormControl>
-                      <Input
-                        inputMode="numeric"
-                        placeholder="8"
-                        className="h-11"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {showWeight ? (
+                <FormField
+                  control={form.control}
+                  name="weightLb"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1">
+                      <FormLabel>Weight (lb)</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="decimal"
+                          placeholder="135"
+                          className="h-11"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+              {showReps ? (
+                <FormField
+                  control={form.control}
+                  name="reps"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1">
+                      <FormLabel>Reps</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="numeric"
+                          placeholder="8"
+                          className="h-11"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
+              {showDuration ? (
+                <FormField
+                  control={form.control}
+                  name="durationSeconds"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1">
+                      <FormLabel>Duration</FormLabel>
+                      <FormControl>
+                        <Input
+                          inputMode="numeric"
+                          placeholder="60"
+                          className="h-11"
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : null}
             </div>
             <FormField
               control={form.control}
@@ -325,9 +410,10 @@ export function SetForm({
                   field.value && field.value !== ""
                     ? Number(field.value)
                     : 0
-                const restLabel = Number.isFinite(restValue)
-                  ? `${restValue}s`
-                  : "0s"
+                const restLabel =
+                  Number.isFinite(restValue) && restValue >= 0
+                    ? formatRestSeconds(restValue) || "0s"
+                    : "0s"
 
                 return (
                   <FormItem className="space-y-3">
@@ -350,7 +436,7 @@ export function SetForm({
                     </FormControl>
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>0s</span>
-                      <span>3m</span>
+                      <span>3 min</span>
                     </div>
                     <FormMessage />
                   </FormItem>

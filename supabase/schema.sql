@@ -5,6 +5,7 @@ create table if not exists public.sets (
   weight_lb double precision,
   reps integer,
   rest_seconds integer,
+  duration_seconds integer,
   performed_at_iso timestamptz,
   created_at_iso timestamptz not null default now(),
   updated_at_iso timestamptz not null default now()

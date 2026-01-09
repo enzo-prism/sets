@@ -21,6 +21,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { SetForm, SetFormPayload } from "@/components/set-form"
 import { formatPt } from "@/lib/time"
 import type { LoggedSet } from "@/lib/types"
+import { buildSetStats } from "@/lib/workout-config"
 import { useSets } from "@/providers/sets-provider"
 import { CalendarClock, Dumbbell } from "lucide-react"
 
@@ -63,16 +64,7 @@ export function EditSetSheet({ set, open, onOpenChange }: EditSetSheetProps) {
     }
   }
 
-  const summaryStats: string[] = []
-  if (set?.weightLb != null) {
-    summaryStats.push(`${set.weightLb} lb`)
-  }
-  if (set?.reps != null) {
-    summaryStats.push(`${set.reps} reps`)
-  }
-  if (set?.restSeconds != null) {
-    summaryStats.push(`${set.restSeconds}s rest`)
-  }
+  const summaryStats = set ? buildSetStats(set) : []
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
