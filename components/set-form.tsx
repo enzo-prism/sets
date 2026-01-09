@@ -58,7 +58,6 @@ const WORKOUT_GROUPS = [
     label: "Lower",
     items: [
       { value: "squat", label: "Squat" },
-      { value: "clean-lower", label: "Clean", canonical: "clean" },
       { value: "single leg squat", label: "Single leg squat" },
     ],
   },
@@ -83,7 +82,6 @@ const WORKOUT_VALUE_MAP = new Map<string, WorkoutType>([
   ["single leg squat", "single leg squat"],
   ["hang clean", "hang clean"],
   ["clean", "clean"],
-  ["clean-lower", "clean"],
   ["clean-power", "clean"],
   ["hang snatch", "hang snatch"],
   ["snatch", "snatch"],
