@@ -36,6 +36,7 @@ playwright-report/
 
 # env files (can opt-in for committing if needed)
 .env*
+supabase-keys.txt
 
 # vercel
 .vercel
