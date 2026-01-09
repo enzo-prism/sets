@@ -31,10 +31,16 @@ export function AddSetDialog({ trigger }: AddSetDialogProps) {
     }
   }, [open])
 
-  const handleSubmit = (payload: SetFormPayload) => {
-    addSet(payload)
-    toast.success("Set added")
-    setOpen(false)
+  const handleSubmit = async (payload: SetFormPayload) => {
+    try {
+      await addSet(payload)
+      toast.success("Set added")
+      setOpen(false)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to add set."
+      toast.error(message)
+    }
   }
 
   return (

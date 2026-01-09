@@ -40,9 +40,9 @@ describe("mapSetToRow", () => {
       updatedAtISO: "2025-02-01T02:00:00.000Z",
     }
 
-    const row = mapSetToRow(set, "device-1")
+    const row = mapSetToRow(set)
 
-    expect(row.device_id).toBe("device-1")
+    expect(row.device_id).toBe("shared")
     expect(row.workout_type).toBe("squat")
     expect(row.weight_lb).toBe(225)
     expect(row.reps).toBe(3)

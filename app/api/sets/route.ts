@@ -11,44 +11,32 @@ import {
 
 export const dynamic = "force-dynamic"
 
-const setSchema = z.object({
-  id: z.string().min(1),
+const setInputSchema = z.object({
   workoutType: z.string().nullable().optional(),
   weightLb: z.number().nullable().optional(),
   reps: z.number().int().nullable().optional(),
   restSeconds: z.number().int().nullable().optional(),
   performedAtISO: z.string().nullable().optional(),
-  createdAtISO: z.string().nullable().optional(),
-  updatedAtISO: z.string().nullable().optional(),
 })
 
-const syncSchema = z.object({
-  sets: z.array(setSchema).optional().default([]),
-  deletedIds: z.array(z.string().min(1)).optional().default([]),
-})
+const createSchema = setInputSchema
+const updateSchema = setInputSchema.extend({ id: z.string().min(1) })
+const deleteSchema = z.object({ id: z.string().min(1) })
 
-type SyncPayload = z.infer<typeof syncSchema>
+type CreatePayload = z.infer<typeof createSchema>
+type UpdatePayload = z.infer<typeof updateSchema>
+type DeletePayload = z.infer<typeof deleteSchema>
 
-type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseServerClient>>
-type SupabaseClientMaybe = ReturnType<typeof getSupabaseServerClient>
-
-type SyncResult = {
-  data: LoggedSet[] | null
-  error: string | null
-  status: number
+type ApiErrorResponse = {
+  error: string
+  details?: unknown
 }
 
-function getDeviceId(request: Request) {
-  const headerId = request.headers.get("x-device-id")
-  if (headerId) {
-    return headerId
+function createId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID()
   }
-  const url = new URL(request.url)
-  return url.searchParams.get("deviceId") ?? ""
-}
-
-function requireSupabase(): SupabaseClientMaybe {
-  return getSupabaseServerClient()
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
 function normalizeWorkoutType(
@@ -62,139 +50,155 @@ function normalizeWorkoutType(
     : null
 }
 
-function normalizeSet(input: z.infer<typeof setSchema>, nowIso: string) {
-  const workoutType = normalizeWorkoutType(input.workoutType)
-
+function buildSet(input: CreatePayload, nowIso: string): LoggedSet {
   return {
-    id: input.id,
-    workoutType,
+    id: createId(),
+    workoutType: normalizeWorkoutType(input.workoutType),
     weightLb: input.weightLb ?? null,
     reps: input.reps ?? null,
     restSeconds: input.restSeconds ?? null,
     performedAtISO: input.performedAtISO ?? null,
-    createdAtISO: input.createdAtISO ?? nowIso,
-    updatedAtISO: input.updatedAtISO ?? nowIso,
-  } satisfies LoggedSet
+    createdAtISO: nowIso,
+    updatedAtISO: nowIso,
+  }
 }
 
-async function loadSets(supabase: SupabaseClient, deviceId: string) {
-  const { data, error } = await supabase
+function buildUpdateRow(input: UpdatePayload, nowIso: string) {
+  return {
+    workout_type: normalizeWorkoutType(input.workoutType),
+    weight_lb: input.weightLb ?? null,
+    reps: input.reps ?? null,
+    rest_seconds: input.restSeconds ?? null,
+    performed_at_iso: input.performedAtISO ?? null,
+    updated_at_iso: nowIso,
+  }
+}
+
+function getSupabaseOrError() {
+  const supabase = getSupabaseServerClient()
+  if (!supabase) {
+    return {
+      error: "Supabase is not configured. Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
+    } as ApiErrorResponse
+  }
+  return { supabase }
+}
+
+async function parseJson<T>(request: Request, schema: z.ZodSchema<T>) {
+  try {
+    const raw = await request.json()
+    const parsed = schema.safeParse(raw)
+    if (!parsed.success) {
+      return { error: "Invalid payload.", details: parsed.error.flatten() }
+    }
+    return { data: parsed.data }
+  } catch {
+    return { error: "Invalid JSON." }
+  }
+}
+
+export async function GET() {
+  const { supabase, error } = getSupabaseOrError()
+  if (!supabase) {
+    return NextResponse.json({ error }, { status: 500 })
+  }
+
+  const { data, error: queryError } = await supabase
     .from("sets")
     .select("*")
-    .eq("device_id", deviceId)
 
-  if (error) {
-    return {
-      data: null,
-      error: error.message,
-      status: 500,
-    } satisfies SyncResult
+  if (queryError) {
+    return NextResponse.json({ error: queryError.message }, { status: 500 })
   }
 
   const sets = (data ?? []).map((row) => mapRowToSet(row as SupabaseSetRow))
-  return {
-    data: sets,
-    error: null,
-    status: 200,
-  } satisfies SyncResult
+  return NextResponse.json(sets)
 }
 
-export async function GET(request: Request) {
-  const deviceId = getDeviceId(request)
-  if (!deviceId) {
-    return NextResponse.json({ error: "Missing device id." }, { status: 400 })
-  }
-
-  const supabase = requireSupabase()
+export async function POST(request: Request) {
+  const { supabase, error } = getSupabaseOrError()
   if (!supabase) {
-    return NextResponse.json(
-      {
-        error:
-          "Supabase is not configured. Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error }, { status: 500 })
   }
 
-  const result = await loadSets(supabase, deviceId)
-  if (result.error) {
-    return NextResponse.json({ error: result.error }, { status: result.status })
+  const parsed = await parseJson<CreatePayload>(request, createSchema)
+  if (parsed.error) {
+    return NextResponse.json(parsed, { status: 400 })
   }
 
-  return NextResponse.json(result.data)
+  const nowIso = new Date().toISOString()
+  const nextSet = buildSet(parsed.data, nowIso)
+
+  const { data, error: insertError } = await supabase
+    .from("sets")
+    .insert(mapSetToRow(nextSet))
+    .select("*")
+
+  if (insertError) {
+    return NextResponse.json({ error: insertError.message }, { status: 500 })
+  }
+
+  const insertedRow = data?.[0]
+  if (!insertedRow) {
+    return NextResponse.json({ error: "Insert failed." }, { status: 500 })
+  }
+
+  return NextResponse.json(mapRowToSet(insertedRow as SupabaseSetRow), {
+    status: 201,
+  })
 }
 
-export async function PUT(request: Request) {
-  const deviceId = getDeviceId(request)
-  if (!deviceId) {
-    return NextResponse.json({ error: "Missing device id." }, { status: 400 })
-  }
-
-  const supabase = requireSupabase()
+export async function PATCH(request: Request) {
+  const { supabase, error } = getSupabaseOrError()
   if (!supabase) {
-    return NextResponse.json(
-      {
-        error:
-          "Supabase is not configured. Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error }, { status: 500 })
   }
 
-  let payload: SyncPayload
-  try {
-    const raw = await request.json()
-    const parsed = syncSchema.safeParse(raw)
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid payload.", details: parsed.error.flatten() },
-        { status: 400 }
-      )
-    }
-    payload = parsed.data
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON." }, { status: 400 })
+  const parsed = await parseJson<UpdatePayload>(request, updateSchema)
+  if (parsed.error) {
+    return NextResponse.json(parsed, { status: 400 })
   }
 
-  const { sets, deletedIds } = payload
-  if (!sets.length && !deletedIds.length) {
-    return NextResponse.json(
-      { error: "No changes submitted." },
-      { status: 400 }
-    )
+  const nowIso = new Date().toISOString()
+  const { id } = parsed.data
+
+  const { data, error: updateError } = await supabase
+    .from("sets")
+    .update(buildUpdateRow(parsed.data, nowIso))
+    .eq("id", id)
+    .select("*")
+
+  if (updateError) {
+    return NextResponse.json({ error: updateError.message }, { status: 500 })
   }
 
-  if (deletedIds.length) {
-    const { error } = await supabase
-      .from("sets")
-      .delete()
-      .eq("device_id", deviceId)
-      .in("id", deletedIds)
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+  const updatedRow = data?.[0]
+  if (!updatedRow) {
+    return NextResponse.json({ error: "Set not found." }, { status: 404 })
   }
 
-  if (sets.length) {
-    const nowIso = new Date().toISOString()
-    const rows = sets.map((set) =>
-      mapSetToRow(normalizeSet(set, nowIso), deviceId)
-    )
+  return NextResponse.json(mapRowToSet(updatedRow as SupabaseSetRow))
+}
 
-    const { error } = await supabase
-      .from("sets")
-      .upsert(rows, { onConflict: "id" })
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+export async function DELETE(request: Request) {
+  const { supabase, error } = getSupabaseOrError()
+  if (!supabase) {
+    return NextResponse.json({ error }, { status: 500 })
   }
 
-  const result = await loadSets(supabase, deviceId)
-  if (result.error) {
-    return NextResponse.json({ error: result.error }, { status: result.status })
+  const parsed = await parseJson<DeletePayload>(request, deleteSchema)
+  if (parsed.error) {
+    return NextResponse.json(parsed, { status: 400 })
   }
 
-  return NextResponse.json(result.data)
+  const { error: deleteError } = await supabase
+    .from("sets")
+    .delete()
+    .eq("id", parsed.data.id)
+
+  if (deleteError) {
+    return NextResponse.json({ error: deleteError.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true })
 }

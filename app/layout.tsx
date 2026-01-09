@@ -12,7 +12,7 @@ const spaceGrotesk = Space_Grotesk({
 
 export const metadata: Metadata = {
   title: "Sets",
-  description: "Track workout sets with local-first storage.",
+  description: "Track workout sets in a shared dataset.",
 }
 
 export default function RootLayout({

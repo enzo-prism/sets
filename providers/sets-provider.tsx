@@ -2,266 +2,148 @@
 
 import * as React from "react"
 import type { LoggedSet } from "@/lib/types"
-import { getDeviceId } from "@/lib/device"
-import {
-  loadPendingDeletes,
-  loadPendingSync,
-  loadSets,
-  savePendingDeletes,
-  savePendingSync,
-  saveSets,
-} from "@/lib/storage"
 
 type SetsContextValue = {
   sets: LoggedSet[]
   isLoaded: boolean
-  addSet: (data: Omit<LoggedSet, "id" | "createdAtISO" | "updatedAtISO">) =>
-    | LoggedSet
-    | null
+  error: string | null
+  refresh: () => Promise<void>
+  addSet: (
+    data: Omit<LoggedSet, "id" | "createdAtISO" | "updatedAtISO">
+  ) => Promise<LoggedSet>
   updateSet: (
     id: string,
     updates: Omit<LoggedSet, "id" | "createdAtISO" | "updatedAtISO">
-  ) => void
-  deleteSet: (id: string) => void
+  ) => Promise<LoggedSet>
+  deleteSet: (id: string) => Promise<void>
 }
 
 const SetsContext = React.createContext<SetsContextValue | null>(null)
 
-function createId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID()
+type ApiErrorShape = {
+  error?: string
+}
+
+function safeJsonParse(text: string) {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
   }
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+async function requestJson<T>(
+  input: RequestInfo,
+  init?: RequestInit
+): Promise<T> {
+  const response = await fetch(input, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  })
+
+  const text = await response.text()
+  const payload = text ? safeJsonParse(text) : null
+
+  if (!response.ok) {
+    const message =
+      (payload as ApiErrorShape | null)?.error ||
+      response.statusText ||
+      "Request failed."
+    throw new Error(message)
+  }
+
+  return payload as T
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) {
+    return error.message
+  }
+  return "Unknown error"
 }
 
 export function SetsProvider({ children }: { children: React.ReactNode }) {
   const [sets, setSets] = React.useState<LoggedSet[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
-  const [deviceId, setDeviceId] = React.useState("")
-  const setsRef = React.useRef<LoggedSet[]>([])
-  const pendingSyncRef = React.useRef(false)
-  const pendingDeletesRef = React.useRef<string[]>([])
-  const syncSeqRef = React.useRef(0)
+  const [error, setError] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    const initialSets = loadSets()
-    setsRef.current = initialSets
-    setSets(initialSets)
-    const pendingDeletes = loadPendingDeletes()
-    const pendingSync =
-      loadPendingSync() || pendingDeletes.length > 0 || initialSets.length > 0
-    pendingDeletesRef.current = pendingDeletes
-    pendingSyncRef.current = pendingSync
-    savePendingSync(pendingSync)
-    setDeviceId(getDeviceId())
-    setIsLoaded(true)
+  const refresh = React.useCallback(async () => {
+    setError(null)
+    try {
+      const data = await requestJson<LoggedSet[]>("/api/sets")
+      setSets(Array.isArray(data) ? data : [])
+    } catch (err) {
+      setError(getErrorMessage(err))
+    } finally {
+      setIsLoaded(true)
+    }
   }, [])
 
   React.useEffect(() => {
-    if (!isLoaded) {
-      return
-    }
-    saveSets(sets)
-  }, [sets, isLoaded])
-
-  React.useEffect(() => {
-    setsRef.current = sets
-  }, [sets])
-
-  const markPendingSync = React.useCallback((pending: boolean) => {
-    pendingSyncRef.current = pending
-    savePendingSync(pending)
-  }, [])
-
-  const setPendingDeletes = React.useCallback((next: string[]) => {
-    pendingDeletesRef.current = next
-    savePendingDeletes(next)
-  }, [])
-
-  const syncSets = React.useCallback(
-    async (nextSets?: LoggedSet[]) => {
-      if (!deviceId) {
-        return
-      }
-
-      const setsToSync = nextSets ?? setsRef.current
-      const deletedIds = pendingDeletesRef.current
-
-      if (!setsToSync.length && !deletedIds.length) {
-        markPendingSync(false)
-        return
-      }
-
-      const syncSeq = (syncSeqRef.current += 1)
-
-      try {
-        const response = await fetch("/api/sets", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "x-device-id": deviceId,
-          },
-          body: JSON.stringify({ sets: setsToSync, deletedIds }),
-        })
-
-        if (!response.ok) {
-          const errorText = await response.text()
-          if (errorText) {
-            console.warn("Supabase sync skipped:", errorText)
-          }
-          markPendingSync(true)
-          return
-        }
-
-        const remoteSets = (await response.json()) as LoggedSet[]
-        if (!Array.isArray(remoteSets)) {
-          markPendingSync(true)
-          return
-        }
-
-        if (syncSeqRef.current !== syncSeq) {
-          return
-        }
-
-        setPendingDeletes([])
-        markPendingSync(false)
-        setsRef.current = remoteSets
-        setSets(remoteSets)
-      } catch (error) {
-        console.error("Failed to sync sets with Supabase", error)
-        markPendingSync(true)
-      }
-    },
-    [deviceId, markPendingSync, setPendingDeletes]
-  )
-
-  React.useEffect(() => {
-    if (!deviceId) {
-      return
-    }
-
-    let isActive = true
-
-    const loadRemote = async () => {
-      const syncSeqAtStart = syncSeqRef.current
-      if (pendingSyncRef.current) {
-        await syncSets(setsRef.current)
-        return
-      }
-
-      try {
-        const response = await fetch("/api/sets", {
-          headers: { "x-device-id": deviceId },
-        })
-        if (!response.ok) {
-          const errorText = await response.text()
-          if (errorText) {
-            console.warn("Supabase sync skipped:", errorText)
-          }
-          return
-        }
-        const remoteSets = (await response.json()) as LoggedSet[]
-        if (isActive && Array.isArray(remoteSets)) {
-          if (
-            pendingSyncRef.current ||
-            syncSeqRef.current !== syncSeqAtStart
-          ) {
-            return
-          }
-          setsRef.current = remoteSets
-          setSets(remoteSets)
-          markPendingSync(false)
-        }
-      } catch (error) {
-        console.error("Failed to load sets from Supabase", error)
-      }
-    }
-
-    loadRemote()
-
-    return () => {
-      isActive = false
-    }
-  }, [deviceId, markPendingSync, syncSets])
+    void refresh()
+  }, [refresh])
 
   const addSet = React.useCallback<SetsContextValue["addSet"]>(
-    (data) => {
-      const nowIso = new Date().toISOString()
-      const nextSet: LoggedSet = {
-        id: createId(),
-        workoutType: data.workoutType ?? null,
-        weightLb: data.weightLb ?? null,
-        reps: data.reps ?? null,
-        restSeconds: data.restSeconds ?? null,
-        performedAtISO: data.performedAtISO ?? null,
-        createdAtISO: nowIso,
-        updatedAtISO: nowIso,
+    async (data) => {
+      setError(null)
+      try {
+        const created = await requestJson<LoggedSet>("/api/sets", {
+          method: "POST",
+          body: JSON.stringify(data),
+        })
+        setSets((prev) => [created, ...prev])
+        return created
+      } catch (err) {
+        setError(getErrorMessage(err))
+        throw err
       }
-      const nextSets = [nextSet, ...setsRef.current]
-      setsRef.current = nextSets
-      setSets(nextSets)
-      markPendingSync(true)
-      void syncSets(nextSets)
-      return nextSet
     },
-    [markPendingSync, syncSets]
+    []
   )
 
   const updateSet = React.useCallback<SetsContextValue["updateSet"]>(
-    (id, updates) => {
-      const nowIso = new Date().toISOString()
-      const nextSets = setsRef.current.map((set) =>
-        set.id === id
-          ? {
-              ...set,
-              workoutType:
-                updates.workoutType !== undefined
-                  ? updates.workoutType
-                  : set.workoutType,
-              weightLb:
-                updates.weightLb !== undefined
-                  ? updates.weightLb
-                  : set.weightLb,
-              reps: updates.reps !== undefined ? updates.reps : set.reps,
-              restSeconds:
-                updates.restSeconds !== undefined
-                  ? updates.restSeconds
-                  : set.restSeconds,
-              performedAtISO:
-                updates.performedAtISO !== undefined
-                  ? updates.performedAtISO
-                  : set.performedAtISO,
-              updatedAtISO: nowIso,
-            }
-          : set
-      )
-      setsRef.current = nextSets
-      setSets(nextSets)
-      markPendingSync(true)
-      void syncSets(nextSets)
+    async (id, updates) => {
+      setError(null)
+      try {
+        const updated = await requestJson<LoggedSet>("/api/sets", {
+          method: "PATCH",
+          body: JSON.stringify({ id, ...updates }),
+        })
+        setSets((prev) =>
+          prev.map((set) => (set.id === id ? updated : set))
+        )
+        return updated
+      } catch (err) {
+        setError(getErrorMessage(err))
+        throw err
+      }
     },
-    [markPendingSync, syncSets]
+    []
   )
 
   const deleteSet = React.useCallback<SetsContextValue["deleteSet"]>(
-    (id) => {
-      const nextSets = setsRef.current.filter((set) => set.id !== id)
-      setsRef.current = nextSets
-      setSets(nextSets)
-
-      const pending = new Set(pendingDeletesRef.current)
-      pending.add(id)
-      setPendingDeletes(Array.from(pending))
-
-      markPendingSync(true)
-      void syncSets(nextSets)
+    async (id) => {
+      setError(null)
+      try {
+        await requestJson<{ ok: boolean }>("/api/sets", {
+          method: "DELETE",
+          body: JSON.stringify({ id }),
+        })
+        setSets((prev) => prev.filter((set) => set.id !== id))
+      } catch (err) {
+        setError(getErrorMessage(err))
+        throw err
+      }
     },
-    [markPendingSync, setPendingDeletes, syncSets]
+    []
   )
 
   const value = React.useMemo(
-    () => ({ sets, isLoaded, addSet, updateSet, deleteSet }),
-    [sets, isLoaded, addSet, updateSet, deleteSet]
+    () => ({ sets, isLoaded, error, refresh, addSet, updateSet, deleteSet }),
+    [sets, isLoaded, error, refresh, addSet, updateSet, deleteSet]
   )
 
   return <SetsContext.Provider value={value}>{children}</SetsContext.Provider>

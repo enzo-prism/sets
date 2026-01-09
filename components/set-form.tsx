@@ -63,7 +63,7 @@ export type SetFormPayload = {
 type SetFormProps = {
   initialValues?: Partial<LoggedSet>
   submitLabel?: string
-  onSubmit: (payload: SetFormPayload) => void
+  onSubmit: (payload: SetFormPayload) => Promise<void> | void
   stickyActions?: boolean
 }
 
@@ -112,7 +112,7 @@ export function SetForm({
     form.reset(defaults)
   }, [defaults, form])
 
-  const onFormSubmit = (values: FormValues) => {
+  const onFormSubmit = async (values: FormValues) => {
     const workoutValue =
       values.workoutType && values.workoutType !== "none"
         ? (values.workoutType as WorkoutType)
@@ -122,7 +122,7 @@ export function SetForm({
         ? ptDateToISO(values.performedDate, values.performedTime)
         : null
 
-    onSubmit({
+    await onSubmit({
       workoutType: workoutValue,
       weightLb: toNumber(values.weightLb),
       reps: toNumber(values.reps),
@@ -384,7 +384,11 @@ export function SetForm({
           data-testid={stickyActions ? "set-form-footer" : undefined}
         >
           <p className="text-xs text-muted-foreground">{footerSummary}</p>
-          <Button type="submit" className="h-11 w-full sm:w-auto">
+          <Button
+            type="submit"
+            className="h-11 w-full sm:w-auto"
+            disabled={form.formState.isSubmitting}
+          >
             {submitLabel ?? "Save set"}
           </Button>
         </div>

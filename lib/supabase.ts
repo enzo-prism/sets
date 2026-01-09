@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js"
 import { WORKOUT_TYPES } from "@/lib/constants"
 import type { LoggedSet, WorkoutType } from "@/lib/types"
 
+const SHARED_DATASET_ID = "shared"
+
 export type SupabaseSetRow = {
   id: string
   device_id: string
@@ -46,7 +48,10 @@ export function mapRowToSet(row: SupabaseSetRow): LoggedSet {
   }
 }
 
-export function mapSetToRow(set: LoggedSet, deviceId: string): SupabaseSetRow {
+export function mapSetToRow(
+  set: LoggedSet,
+  datasetId: string = SHARED_DATASET_ID
+): SupabaseSetRow {
   const workoutType =
     set.workoutType && WORKOUT_TYPES.includes(set.workoutType)
       ? set.workoutType
@@ -54,7 +59,7 @@ export function mapSetToRow(set: LoggedSet, deviceId: string): SupabaseSetRow {
 
   return {
     id: set.id,
-    device_id: deviceId,
+    device_id: datasetId,
     workout_type: workoutType,
     weight_lb: set.weightLb ?? null,
     reps: set.reps ?? null,

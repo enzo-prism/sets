@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test"
+import { test, expect, type Page } from "@playwright/test"
 
 const seedSet = {
   id: "test-set-1",
@@ -11,6 +11,75 @@ const seedSet = {
   updatedAtISO: "2026-01-08T20:00:00.000Z",
 }
 
+type LoggedSet = typeof seedSet
+
+async function mockSetsApi(page: Page, initialSets: LoggedSet[]) {
+  const sets = [...initialSets]
+
+  await page.route("**/api/sets", async (route) => {
+    const method = route.request().method()
+
+    if (method === "GET") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: sets,
+      })
+    }
+
+    if (method === "PATCH") {
+      const payload = route.request().postDataJSON() as Partial<LoggedSet> & {
+        id: string
+      }
+      const index = sets.findIndex((set) => set.id === payload.id)
+      if (index === -1) {
+        return route.fulfill({
+          status: 404,
+          contentType: "application/json",
+          json: { error: "Set not found." },
+        })
+      }
+
+      const updated = {
+        ...sets[index],
+        workoutType: payload.workoutType ?? null,
+        weightLb: payload.weightLb ?? null,
+        reps: payload.reps ?? null,
+        restSeconds: payload.restSeconds ?? null,
+        performedAtISO: payload.performedAtISO ?? null,
+        updatedAtISO: new Date().toISOString(),
+      }
+      sets[index] = updated
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: updated,
+      })
+    }
+
+    if (method === "DELETE") {
+      const payload = route.request().postDataJSON() as { id: string }
+      const index = sets.findIndex((set) => set.id === payload.id)
+      if (index !== -1) {
+        sets.splice(index, 1)
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        json: { ok: true },
+      })
+    }
+
+    return route.fulfill({
+      status: 405,
+      contentType: "application/json",
+      json: { error: "Method not allowed" },
+    })
+  })
+
+  return sets
+}
+
 const viewports = [
   { name: "mobile", size: { width: 390, height: 844 } },
   { name: "tablet", size: { width: 834, height: 1112 } },
@@ -20,10 +89,7 @@ const viewports = [
 for (const viewport of viewports) {
   test(`edit sheet layout is responsive on ${viewport.name}`, async ({ page }) => {
     await page.setViewportSize(viewport.size)
-    await page.addInitScript((set) => {
-      window.localStorage.setItem("sets-tracker:v1", JSON.stringify([set]))
-      window.localStorage.setItem("sets-tracker:device-id", "test-device")
-    }, seedSet)
+    await mockSetsApi(page, [seedSet])
 
     await page.goto(`/?edit=${seedSet.id}`)
 
@@ -54,10 +120,7 @@ for (const viewport of viewports) {
 
 test("can update a set on mobile", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.addInitScript((set) => {
-    window.localStorage.setItem("sets-tracker:v1", JSON.stringify([set]))
-    window.localStorage.setItem("sets-tracker:device-id", "test-device")
-  }, seedSet)
+  await mockSetsApi(page, [seedSet])
 
   await page.goto("/")
 

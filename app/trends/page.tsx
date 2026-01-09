@@ -24,6 +24,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { DataError } from "@/components/data-error"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Select,
@@ -87,7 +88,7 @@ const maxWeightChartConfig = {
 } satisfies ChartConfig
 
 export default function TrendsPage() {
-  const { sets } = useSets()
+  const { sets, error, isLoaded } = useSets()
   const [range, setRange] = React.useState<DateRange | undefined>(
     getLast7Range()
   )
@@ -126,10 +127,13 @@ export default function TrendsPage() {
   }, [range])
 
   const hasData = setsInRange.length > 0
+  const showLoading = !isLoaded && !error
+  const showEmpty = isLoaded && !error && !hasData
   const hasMaxWeight = maxWeightTrend.some((entry) => entry.maxWeight != null)
 
   return (
     <div className="space-y-6">
+      {error ? <DataError message={error} /> : null}
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap gap-2">
@@ -174,7 +178,11 @@ export default function TrendsPage() {
         </CardContent>
       </Card>
 
-      {!hasData ? (
+      {showLoading ? (
+        <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
+          Loading sets...
+        </div>
+      ) : showEmpty ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
           No performed sets in this range yet. Log a set to see trends.
         </div>

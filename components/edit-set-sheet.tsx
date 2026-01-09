@@ -33,22 +33,34 @@ type EditSetSheetProps = {
 export function EditSetSheet({ set, open, onOpenChange }: EditSetSheetProps) {
   const { updateSet, deleteSet } = useSets()
 
-  const handleSubmit = (payload: SetFormPayload) => {
+  const handleSubmit = async (payload: SetFormPayload) => {
     if (!set) {
       return
     }
-    updateSet(set.id, payload)
-    toast.success("Set updated")
-    onOpenChange(false)
+    try {
+      await updateSet(set.id, payload)
+      toast.success("Set updated")
+      onOpenChange(false)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to update set."
+      toast.error(message)
+    }
   }
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!set) {
       return
     }
-    deleteSet(set.id)
-    toast.success("Set deleted")
-    onOpenChange(false)
+    try {
+      await deleteSet(set.id)
+      toast.success("Set deleted")
+      onOpenChange(false)
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to delete set."
+      toast.error(message)
+    }
   }
 
   const summaryStats: string[] = []

@@ -8,6 +8,7 @@ import { CalendarDays, CalendarRange, History, List } from "lucide-react"
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { DataError } from "@/components/data-error"
 import { ReadOnlySetDialog } from "@/components/read-only-set-dialog"
 import { useSets } from "@/providers/sets-provider"
 import { filterSetsByRange, sortSets } from "@/lib/stats"
@@ -29,7 +30,7 @@ function getThisMonthRange(): DateRange {
 }
 
 export default function CalendarPage() {
-  const { sets } = useSets()
+  const { sets, error, isLoaded } = useSets()
   const [range, setRange] = React.useState<DateRange | undefined>(
     getLast7Range()
   )
@@ -51,6 +52,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
+      {error ? <DataError message={error} /> : null}
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap gap-2">
@@ -99,17 +101,21 @@ export default function CalendarPage() {
             {setsInRange.length} total
           </span>
         </div>
-        {setsInRange.length === 0 ? (
+        {!isLoaded && !error ? (
+          <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
+            Loading sets...
+          </div>
+        ) : !error && setsInRange.length === 0 ? (
           <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
             No sets logged for this range.
           </div>
-        ) : (
+        ) : setsInRange.length > 0 ? (
           <div className="space-y-3">
             {setsInRange.map((set) => (
               <ReadOnlySetDialog key={set.id} set={set} />
             ))}
           </div>
-        )}
+        ) : null}
       </section>
     </div>
   )
