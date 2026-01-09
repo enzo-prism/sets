@@ -23,13 +23,15 @@ import { Input } from "@/components/ui/input"
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
-import { WORKOUT_TYPES } from "@/lib/constants"
 import type { LoggedSet, WorkoutType } from "@/lib/types"
 import {
   formatPt,
@@ -40,6 +42,62 @@ import {
   toPtTimeInput,
 } from "@/lib/time"
 import { cn } from "@/lib/utils"
+
+const WORKOUT_GROUPS = [
+  {
+    label: "Upper",
+    items: [
+      { value: "bench press", label: "Bench press" },
+      { value: "should press", label: "Shoulder press" },
+      { value: "pull up", label: "Pull up" },
+      { value: "rear delt fly", label: "Rear delt fly" },
+      { value: "cable face pull", label: "Cable face pull" },
+    ],
+  },
+  {
+    label: "Lower",
+    items: [
+      { value: "squat", label: "Squat" },
+      { value: "clean-lower", label: "Clean", canonical: "clean" },
+      { value: "single leg squat", label: "Single leg squat" },
+    ],
+  },
+  {
+    label: "Power",
+    items: [
+      { value: "hang clean", label: "Hang clean" },
+      { value: "clean-power", label: "Clean", canonical: "clean" },
+      { value: "hang snatch", label: "Hang snatch" },
+      { value: "snatch", label: "Snatch" },
+    ],
+  },
+] as const
+
+const WORKOUT_VALUE_MAP = new Map<string, WorkoutType>([
+  ["bench press", "bench press"],
+  ["should press", "should press"],
+  ["pull up", "pull up"],
+  ["rear delt fly", "rear delt fly"],
+  ["cable face pull", "cable face pull"],
+  ["squat", "squat"],
+  ["single leg squat", "single leg squat"],
+  ["hang clean", "hang clean"],
+  ["clean", "clean"],
+  ["clean-lower", "clean"],
+  ["clean-power", "clean"],
+  ["hang snatch", "hang snatch"],
+  ["snatch", "snatch"],
+])
+
+function toSelectValue(workoutType?: WorkoutType | null) {
+  if (!workoutType) {
+    return ""
+  }
+  if (workoutType === "clean") {
+    return "clean-power"
+  }
+  return workoutType
+}
 
 const formSchema = z.object({
   workoutType: z.string().nullable().optional(),
@@ -83,7 +141,7 @@ export function SetForm({
 }: SetFormProps) {
   const defaults = React.useMemo<FormValues>(
     () => ({
-      workoutType: initialValues?.workoutType ?? "",
+      workoutType: toSelectValue(initialValues?.workoutType),
       weightLb:
         initialValues?.weightLb != null
           ? String(initialValues.weightLb)
@@ -115,7 +173,7 @@ export function SetForm({
   const onFormSubmit = async (values: FormValues) => {
     const workoutValue =
       values.workoutType && values.workoutType !== "none"
-        ? (values.workoutType as WorkoutType)
+        ? WORKOUT_VALUE_MAP.get(values.workoutType) ?? null
         : null
     const performedAtISO =
       values.performedDate && values.performedTime
@@ -164,9 +222,6 @@ export function SetForm({
               <Dumbbell className="h-4 w-4 text-muted-foreground" />
               Workout
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Optional. Choose the movement or keep it open-ended.
-            </p>
           </CardHeader>
           <CardContent className="space-y-3 px-4 sm:px-6">
             <FormField
@@ -186,10 +241,21 @@ export function SetForm({
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="none">None</SelectItem>
-                      {WORKOUT_TYPES.map((type) => (
-                        <SelectItem key={type} value={type}>
-                          {type}
-                        </SelectItem>
+                      <SelectSeparator />
+                      {WORKOUT_GROUPS.map((group, index) => (
+                        <React.Fragment key={group.label}>
+                          <SelectGroup>
+                            <SelectLabel>{group.label}</SelectLabel>
+                            {group.items.map((item) => (
+                              <SelectItem key={item.value} value={item.value}>
+                                {item.label}
+                              </SelectItem>
+                            ))}
+                          </SelectGroup>
+                          {index < WORKOUT_GROUPS.length - 1 ? (
+                            <SelectSeparator />
+                          ) : null}
+                        </React.Fragment>
                       ))}
                     </SelectContent>
                   </Select>
@@ -210,69 +276,88 @@ export function SetForm({
                 <Gauge className="h-4 w-4 text-muted-foreground" />
                 Stats
               </span>
-              <Badge variant="secondary">Optional</Badge>
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Leave any field blank if you are logging a simple set.
-            </p>
           </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 px-4 sm:grid-cols-3 sm:px-6">
-            <FormField
-              control={form.control}
-              name="weightLb"
-              render={({ field }) => (
-                <FormItem className="col-span-1">
-                  <FormLabel>Weight (lb)</FormLabel>
-                  <FormControl>
-                    <Input
-                      inputMode="decimal"
-                      placeholder="135"
-                      className="h-11"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="reps"
-              render={({ field }) => (
-                <FormItem className="col-span-1">
-                  <FormLabel>Reps</FormLabel>
-                  <FormControl>
-                    <Input
-                      inputMode="numeric"
-                      placeholder="8"
-                      className="h-11"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <CardContent className="space-y-4 px-4 sm:px-6">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="weightLb"
+                render={({ field }) => (
+                  <FormItem className="col-span-1">
+                    <FormLabel>Weight (lb)</FormLabel>
+                    <FormControl>
+                      <Input
+                        inputMode="decimal"
+                        placeholder="135"
+                        className="h-11"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="reps"
+                render={({ field }) => (
+                  <FormItem className="col-span-1">
+                    <FormLabel>Reps</FormLabel>
+                    <FormControl>
+                      <Input
+                        inputMode="numeric"
+                        placeholder="8"
+                        className="h-11"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="restSeconds"
-              render={({ field }) => (
-                <FormItem className="col-span-2 sm:col-span-1">
-                  <FormLabel>Rest (sec)</FormLabel>
-                  <FormControl>
-                    <Input
-                      inputMode="numeric"
-                      placeholder="90"
-                      className="h-11"
-                      {...field}
-                      value={field.value ?? ""}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const restValue =
+                  field.value && field.value !== ""
+                    ? Number(field.value)
+                    : 0
+                const restLabel = Number.isFinite(restValue)
+                  ? `${restValue}s`
+                  : "0s"
+
+                return (
+                  <FormItem className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <FormLabel>Rest (sec)</FormLabel>
+                      <span className="text-xs text-muted-foreground">
+                        {restLabel}
+                      </span>
+                    </div>
+                    <FormControl>
+                      <input
+                        type="range"
+                        min={0}
+                        max={180}
+                        step={30}
+                        value={restValue}
+                        onChange={(event) => field.onChange(event.target.value)}
+                        className="h-2 w-full cursor-pointer accent-primary"
+                      />
+                    </FormControl>
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>0s</span>
+                      <span>3m</span>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
             />
           </CardContent>
         </Card>
@@ -291,9 +376,6 @@ export function SetForm({
                 {previewIso ? formatPt(previewIso) : "No performed time"}
               </Badge>
             </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Displayed in America/Los_Angeles. Leave blank to skip.
-            </p>
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
@@ -356,8 +438,7 @@ export function SetForm({
                 )}
               />
             </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>Saving with blanks is ok.</span>
+            <div className="flex items-center justify-end text-xs text-muted-foreground">
               <Button
                 type="button"
                 variant="ghost"

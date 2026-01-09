@@ -184,7 +184,7 @@ export default function TrendsPage() {
         </div>
       ) : showEmpty ? (
         <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
-          No performed sets in this range yet. Log a set to see trends.
+          No performed sets in this range yet.
         </div>
       ) : (
         <div className="space-y-4">
