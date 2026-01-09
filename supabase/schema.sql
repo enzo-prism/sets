@@ -1,0 +1,13 @@
+create table if not exists public.sets (
+  id text primary key,
+  device_id text not null,
+  workout_type text,
+  weight_lb double precision,
+  reps integer,
+  rest_seconds integer,
+  performed_at_iso timestamptz,
+  created_at_iso timestamptz not null,
+  updated_at_iso timestamptz not null
+);
+
+create index if not exists sets_device_id_idx on public.sets (device_id);

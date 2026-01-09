@@ -1,11 +1,14 @@
 # Sets
 
-A production-ready, mobile-first workout set tracker built with Next.js App Router, shadcn/ui, and local-only storage. All dates are displayed and edited in America/Los_Angeles (PT), regardless of device timezone.
+A production-ready, mobile-first workout set tracker built with Next.js App Router, shadcn/ui, and local-only storage by default. When Supabase is configured, sets sync to your Supabase project while still caching locally.
+
+All dates are displayed and edited in America/Los_Angeles (PT), regardless of device timezone.
 
 ## Features
 
 - Log and edit workout sets (all fields optional)
-- Local-only persistence via `localStorage`
+- Local persistence via `localStorage`
+- Optional Supabase sync for cross-device storage
 - Calendar range view with read-only details and deep-link editing
 - Trends dashboard with 3 charts powered by shadcn/ui (Recharts)
 - Fixed bottom navigation for mobile
@@ -18,8 +21,23 @@ A production-ready, mobile-first workout set tracker built with Next.js App Rout
 
 ## Local data
 
-Sets are stored only in your browser `localStorage` under the key `sets-tracker:v1`.
-No authentication or backend is used.
+Sets are cached in your browser `localStorage` under the key `sets-tracker:v1`.
+A device ID is stored under `sets-tracker:device-id` when Supabase sync is enabled.
+
+## Supabase sync (optional)
+
+1. Create the `sets` table by running `supabase/schema.sql` in your Supabase SQL editor.
+2. Add the environment variables below.
+3. Restart the dev server.
+
+Required environment variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
+
+The service role key is used only on the server via the API route in `app/api/sets/route.ts`.
 
 ## Setup
 
@@ -41,7 +59,8 @@ pnpm start
 1. Push this repo to GitHub/GitLab/Bitbucket.
 2. Create a new Vercel project and import the repo.
 3. Vercel detects Next.js automatically; keep the defaults.
-4. Deploy.
+4. Add the Supabase environment variables if you want sync.
+5. Deploy.
 
 ## Tech stack
 
@@ -49,4 +68,5 @@ pnpm start
 - Tailwind CSS + shadcn/ui
 - React Hook Form + Zod
 - Recharts via shadcn/ui chart components
+- Supabase via API routes
 - date-fns + @date-fns/tz

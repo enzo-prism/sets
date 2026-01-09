@@ -13,3 +13,4 @@ export const WORKOUT_TYPES = [
 ] as const
 
 export const STORAGE_KEY = "sets-tracker:v1"
+export const DEVICE_ID_KEY = "sets-tracker:device-id"
