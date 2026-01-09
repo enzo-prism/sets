@@ -97,7 +97,7 @@ export function EditSetSheet({ set, open, onOpenChange }: EditSetSheetProps) {
                       </Badge>
                     ))
                   ) : (
-                    <Badge variant="outline">No stats yet</Badge>
+                    <div className="h-5 w-full" aria-hidden="true" />
                   )}
                 </CardContent>
               </Card>

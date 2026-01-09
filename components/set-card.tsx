@@ -49,7 +49,7 @@ export function SetCard({ set, onClick, readOnly }: SetCardProps) {
           ))}
         </div>
       ) : (
-        <div className="text-xs text-muted-foreground">No stats yet</div>
+        <div className="h-5 w-full" aria-hidden="true" />
       )}
     </Button>
   )
