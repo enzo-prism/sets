@@ -2,9 +2,10 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Dumbbell, Plus } from "lucide-react"
+import { Dumbbell, Plus, RefreshCw } from "lucide-react"
 
 import { AddSetDialog } from "@/components/add-set-dialog"
+import { DataError } from "@/components/data-error"
 import { EditSetSheet } from "@/components/edit-set-sheet"
 import { SetCard } from "@/components/set-card"
 import { Button } from "@/components/ui/button"
@@ -12,7 +13,8 @@ import { useSets } from "@/providers/sets-provider"
 import { sortSets } from "@/lib/stats"
 
 export function HomeView() {
-  const { sets, isLoaded } = useSets()
+  const { sets, isLoaded, error, refresh } = useSets()
+  const [isRefreshing, setIsRefreshing] = React.useState(false)
   const sortedSets = React.useMemo(() => sortSets(sets), [sets])
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -54,9 +56,32 @@ export function HomeView() {
     router.replace(pathname)
   }
 
+  const handleRefresh = async () => {
+    if (isRefreshing) {
+      return
+    }
+    setIsRefreshing(true)
+    try {
+      await refresh()
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end">
+      {error ? <DataError message={error} /> : null}
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-11 w-11"
+          onClick={handleRefresh}
+          aria-label="Refresh sets"
+          disabled={isRefreshing}
+        >
+          <RefreshCw className={isRefreshing ? "h-5 w-5 animate-spin" : "h-5 w-5"} />
+        </Button>
         <AddSetDialog
           trigger={
             <Button size="icon" className="h-11 w-11 rounded-full shadow-sm">
@@ -66,7 +91,11 @@ export function HomeView() {
         />
       </div>
 
-      {sortedSets.length === 0 ? (
+      {!isLoaded && !error ? (
+        <div className="rounded-2xl border bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
+          Loading sets...
+        </div>
+      ) : !error && sortedSets.length === 0 ? (
         <div className="rounded-2xl border bg-card p-6 text-center shadow-sm">
           <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-muted">
             <Dumbbell className="h-5 w-5 text-muted-foreground" />
@@ -79,13 +108,13 @@ export function HomeView() {
             <AddSetDialog trigger={<Button>Add your first set</Button>} />
           </div>
         </div>
-      ) : (
+      ) : sortedSets.length > 0 ? (
         <div className="space-y-3">
           {sortedSets.map((set) => (
             <SetCard key={set.id} set={set} onClick={() => openEdit(set.id)} />
           ))}
         </div>
-      )}
+      ) : null}
 
       <EditSetSheet
         set={editingSet}
