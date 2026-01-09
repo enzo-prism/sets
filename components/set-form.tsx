@@ -26,7 +26,6 @@ import {
   SelectGroup,
   SelectItem,
   SelectLabel,
-  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
@@ -43,95 +42,13 @@ import {
 } from "@/lib/time"
 import { cn } from "@/lib/utils"
 import { formatRestSeconds, getWorkoutFieldVisibility } from "@/lib/workout-config"
-
-const WORKOUT_GROUPS = [
-  {
-    label: "Upper",
-    items: [
-      { value: "bench press", label: "Bench press" },
-      { value: "should press", label: "Shoulder press" },
-      { value: "rear delt fly", label: "Rear delt fly" },
-      { value: "cable face pull", label: "Cable face pull" },
-    ],
-  },
-  {
-    label: "Lower",
-    items: [
-      { value: "squat", label: "Squat" },
-      { value: "single leg squat", label: "Single leg squat" },
-      { value: "good morning", label: "Good morning" },
-      { value: "calf raises", label: "Calf raises" },
-      { value: "calf raises (seated)", label: "Calf raises (seated)" },
-    ],
-  },
-  {
-    label: "Power",
-    items: [
-      { value: "hang clean", label: "Hang clean" },
-      { value: "clean-power", label: "Clean", canonical: "clean" },
-      { value: "hang snatch", label: "Hang snatch" },
-      { value: "snatch", label: "Snatch" },
-    ],
-  },
-  {
-    label: "Core",
-    items: [
-      { value: "leg lifts", label: "Leg lifts" },
-      { value: "plank", label: "Plank" },
-      { value: "toe touches", label: "Toe touches" },
-      { value: "bicycles", label: "Bicycles" },
-    ],
-  },
-  {
-    label: "Bar",
-    items: [
-      { value: "pull up", label: "Pull ups" },
-      { value: "true bubka", label: "True bubka" },
-      { value: "wipers", label: "Wipers" },
-      { value: "down pressure", label: "Down pressure" },
-    ],
-  },
-  {
-    label: "Recover",
-    items: [{ value: "sauna", label: "Sauna" }],
-  },
-] as const
-
-const WORKOUT_VALUE_MAP = new Map<string, WorkoutType>([
-  ["bench press", "bench press"],
-  ["should press", "should press"],
-  ["pull up", "pull up"],
-  ["rear delt fly", "rear delt fly"],
-  ["cable face pull", "cable face pull"],
-  ["squat", "squat"],
-  ["single leg squat", "single leg squat"],
-  ["good morning", "good morning"],
-  ["calf raises", "calf raises"],
-  ["calf raises (seated)", "calf raises (seated)"],
-  ["hang clean", "hang clean"],
-  ["clean", "clean"],
-  ["clean-power", "clean"],
-  ["hang snatch", "hang snatch"],
-  ["snatch", "snatch"],
-  ["leg lifts", "leg lifts"],
-  ["plank", "plank"],
-  ["toe touches", "toe touches"],
-  ["bicycles", "bicycles"],
-  ["true bubka", "true bubka"],
-  ["wipers", "wipers"],
-  ["down pressure", "down pressure"],
-  ["sauna", "sauna"],
-])
-
-function toSelectValue(workoutType?: WorkoutType | null) {
-  if (!workoutType) {
-    return ""
-  }
-  if (workoutType === "clean") {
-    return "clean-power"
-  }
-  return workoutType
-}
+import {
+  WORKOUT_GROUPS,
+  getWorkoutGroupById,
+  getWorkoutGroupIdForType,
+  workoutTypeToValue,
+  workoutValueToType,
+} from "@/lib/workouts"
 
 const formSchema = z.object({
   workoutType: z.string().nullable().optional(),
@@ -169,13 +86,6 @@ function toNumber(value?: string | null) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-function resolveWorkoutType(value?: string | null) {
-  if (!value || value === "none") {
-    return null
-  }
-  return WORKOUT_VALUE_MAP.get(value) ?? null
-}
-
 export function SetForm({
   initialValues,
   submitLabel,
@@ -184,7 +94,7 @@ export function SetForm({
 }: SetFormProps) {
   const defaults = React.useMemo<FormValues>(
     () => ({
-      workoutType: toSelectValue(initialValues?.workoutType),
+      workoutType: workoutTypeToValue(initialValues?.workoutType),
       weightLb:
         initialValues?.weightLb != null
           ? String(initialValues.weightLb)
@@ -218,7 +128,7 @@ export function SetForm({
   }, [defaults, form])
 
   const onFormSubmit = async (values: FormValues) => {
-    const workoutValue = resolveWorkoutType(values.workoutType)
+    const workoutValue = workoutValueToType(values.workoutType)
     const { showWeight, showReps, showDuration } =
       getWorkoutFieldVisibility(workoutValue)
     const performedAtISO =
@@ -241,11 +151,35 @@ export function SetForm({
     name: "workoutType",
   })
   const activeWorkoutType = React.useMemo(
-    () => resolveWorkoutType(selectedWorkout),
+    () => workoutValueToType(selectedWorkout),
     [selectedWorkout]
   )
   const { showWeight, showReps, showDuration } =
     getWorkoutFieldVisibility(activeWorkoutType)
+  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(
+    null
+  )
+
+  React.useEffect(() => {
+    setSelectedCategory(
+      getWorkoutGroupIdForType(initialValues?.workoutType ?? null)
+    )
+  }, [initialValues?.workoutType])
+
+  React.useEffect(() => {
+    if (!activeWorkoutType) {
+      return
+    }
+    const groupId = getWorkoutGroupIdForType(activeWorkoutType)
+    if (groupId) {
+      setSelectedCategory(groupId)
+    }
+  }, [activeWorkoutType])
+
+  const activeGroup = React.useMemo(
+    () => getWorkoutGroupById(selectedCategory),
+    [selectedCategory]
+  )
 
   const selectedDate = useWatch({
     control: form.control,
@@ -288,33 +222,87 @@ export function SetForm({
               render={({ field }) => (
                 <FormItem className="space-y-2">
                   <FormLabel>Workout type</FormLabel>
+                  <div className="space-y-2">
+                    <div className="text-xs font-medium text-muted-foreground">
+                      Category
+                    </div>
+                    <div
+                      className="flex gap-2 overflow-x-auto pb-1"
+                      role="group"
+                      aria-label="Workout category"
+                    >
+                      <Button
+                        type="button"
+                        variant={selectedCategory ? "outline" : "secondary"}
+                        size="sm"
+                        className="h-9 shrink-0 rounded-full px-4"
+                        aria-pressed={!selectedCategory}
+                        onClick={() => {
+                          setSelectedCategory(null)
+                          form.setValue("workoutType", "")
+                        }}
+                      >
+                        None
+                      </Button>
+                      {WORKOUT_GROUPS.map((group) => (
+                        <Button
+                          key={group.id}
+                          type="button"
+                          variant={
+                            selectedCategory === group.id
+                              ? "secondary"
+                              : "outline"
+                          }
+                          size="sm"
+                          className="h-9 shrink-0 rounded-full px-4"
+                          aria-pressed={selectedCategory === group.id}
+                          onClick={() => {
+                            setSelectedCategory(group.id)
+                            const values = group.items.map((item) => item.value)
+                            if (
+                              selectedWorkout &&
+                              !values.includes(selectedWorkout)
+                            ) {
+                              form.setValue("workoutType", "")
+                            }
+                          }}
+                        >
+                          {group.label}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
                   <Select
                     value={field.value || undefined}
                     onValueChange={(value) => field.onChange(value)}
+                    disabled={!selectedCategory}
                   >
                     <FormControl>
                       <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select workout" />
+                        <SelectValue
+                          placeholder={
+                            selectedCategory
+                              ? "Select workout"
+                              : "Select a category first"
+                          }
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      <SelectSeparator />
-                      {WORKOUT_GROUPS.map((group, index) => (
-                        <React.Fragment key={group.label}>
-                          <SelectGroup>
-                            <SelectLabel>{group.label}</SelectLabel>
-                            {group.items.map((item) => (
-                              <SelectItem key={item.value} value={item.value}>
-                                {item.label}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
-                          {index < WORKOUT_GROUPS.length - 1 ? (
-                            <SelectSeparator />
-                          ) : null}
-                        </React.Fragment>
-                      ))}
+                      {activeGroup ? (
+                        <SelectGroup>
+                          <SelectLabel>{activeGroup.label}</SelectLabel>
+                          {activeGroup.items.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">
+                          Choose a category to see workouts.
+                        </div>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
