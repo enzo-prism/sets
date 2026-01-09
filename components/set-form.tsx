@@ -41,11 +41,16 @@ import {
   toPtTimeInput,
 } from "@/lib/time"
 import { cn } from "@/lib/utils"
-import { formatRestSeconds, getWorkoutFieldVisibility } from "@/lib/workout-config"
+import {
+  formatDurationSeconds,
+  formatRestSeconds,
+  getWorkoutFieldVisibility,
+} from "@/lib/workout-config"
 import {
   WORKOUT_GROUPS,
   getWorkoutGroupById,
   getWorkoutGroupIdForType,
+  isRecoveryWorkout,
   workoutTypeToValue,
   workoutValueToType,
 } from "@/lib/workouts"
@@ -76,6 +81,26 @@ type SetFormProps = {
   submitLabel?: string
   onSubmit: (payload: SetFormPayload) => Promise<void> | void
   stickyActions?: boolean
+}
+
+const RECOVERY_DURATION_MIN = 10 * 60
+const RECOVERY_DURATION_MAX = 25 * 60
+const RECOVERY_DURATION_STEP = 60
+
+function clampNumber(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function snapToStep(value: number, step: number) {
+  return Math.round(value / step) * step
+}
+
+function coerceRecoveryDuration(value?: number | null) {
+  if (value == null || !Number.isFinite(value)) {
+    return RECOVERY_DURATION_MIN
+  }
+  const snapped = snapToStep(value, RECOVERY_DURATION_STEP)
+  return clampNumber(snapped, RECOVERY_DURATION_MIN, RECOVERY_DURATION_MAX)
 }
 
 function toNumber(value?: string | null) {
@@ -129,7 +154,7 @@ export function SetForm({
 
   const onFormSubmit = async (values: FormValues) => {
     const workoutValue = workoutValueToType(values.workoutType)
-    const { showWeight, showReps, showDuration } =
+    const { showWeight, showReps, showDuration, showRest } =
       getWorkoutFieldVisibility(workoutValue)
     const performedAtISO =
       values.performedDate && values.performedTime
@@ -140,7 +165,7 @@ export function SetForm({
       workoutType: workoutValue,
       weightLb: showWeight ? toNumber(values.weightLb) : null,
       reps: showReps ? toNumber(values.reps) : null,
-      restSeconds: toNumber(values.restSeconds),
+      restSeconds: showRest ? toNumber(values.restSeconds) : null,
       durationSeconds: showDuration ? toNumber(values.durationSeconds) : null,
       performedAtISO,
     })
@@ -154,8 +179,11 @@ export function SetForm({
     () => workoutValueToType(selectedWorkout),
     [selectedWorkout]
   )
-  const { showWeight, showReps, showDuration } =
+  const { showWeight, showReps, showDuration, showRest } =
     getWorkoutFieldVisibility(activeWorkoutType)
+  const isRecovery = isRecoveryWorkout(activeWorkoutType)
+  const showDurationSlider = showDuration && isRecovery
+  const showDurationInput = showDuration && !isRecovery
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(
     null
   )
@@ -189,6 +217,22 @@ export function SetForm({
     control: form.control,
     name: "performedTime",
   })
+  const selectedDuration = useWatch({
+    control: form.control,
+    name: "durationSeconds",
+  })
+
+  React.useEffect(() => {
+    if (!showDurationSlider) {
+      return
+    }
+    const current = toNumber(selectedDuration)
+    const clamped = coerceRecoveryDuration(current)
+    const nextValue = String(clamped)
+    if ((selectedDuration ?? "") !== nextValue) {
+      form.setValue("durationSeconds", nextValue)
+    }
+  }, [form, selectedDuration, showDurationSlider])
   const dateLabel = selectedDate
     ? format(toPtDateFromInput(selectedDate), "PPP")
     : "Pick date"
@@ -371,7 +415,7 @@ export function SetForm({
                   )}
                 />
               ) : null}
-              {showDuration ? (
+              {showDurationInput ? (
                 <FormField
                   control={form.control}
                   name="durationSeconds"
@@ -393,47 +437,97 @@ export function SetForm({
                 />
               ) : null}
             </div>
-            <FormField
-              control={form.control}
-              name="restSeconds"
-              render={({ field }) => {
-                const restValue =
-                  field.value && field.value !== ""
-                    ? Number(field.value)
-                    : 0
-                const restLabel =
-                  Number.isFinite(restValue) && restValue >= 0
-                    ? formatRestSeconds(restValue) || "0s"
-                    : "0s"
+            {showDurationSlider ? (
+              <FormField
+                control={form.control}
+                name="durationSeconds"
+                render={({ field }) => {
+                  const durationValue = coerceRecoveryDuration(
+                    toNumber(field.value)
+                  )
+                  const durationLabel =
+                    formatDurationSeconds(durationValue) || "10 min"
 
-                return (
-                  <FormItem className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <FormLabel>Rest (sec)</FormLabel>
-                      <span className="text-xs text-muted-foreground">
-                        {restLabel}
-                      </span>
-                    </div>
-                    <FormControl>
-                      <input
-                        type="range"
-                        min={0}
-                        max={180}
-                        step={30}
-                        value={restValue}
-                        onChange={(event) => field.onChange(event.target.value)}
-                        className="h-2 w-full cursor-pointer accent-primary"
-                      />
-                    </FormControl>
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>0s</span>
-                      <span>3 min</span>
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
+                  return (
+                    <FormItem className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Duration</FormLabel>
+                        <span className="text-xs text-muted-foreground">
+                          {durationLabel}
+                        </span>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="range"
+                          min={RECOVERY_DURATION_MIN}
+                          max={RECOVERY_DURATION_MAX}
+                          step={RECOVERY_DURATION_STEP}
+                          value={durationValue}
+                          onChange={(event) =>
+                            field.onChange(event.target.value)
+                          }
+                          className="h-2 w-full cursor-pointer accent-primary"
+                        />
+                      </FormControl>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {formatDurationSeconds(RECOVERY_DURATION_MIN)}
+                        </span>
+                        <span>
+                          {formatDurationSeconds(RECOVERY_DURATION_MAX)}
+                        </span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+            ) : null}
+            {showRest ? (
+              <FormField
+                control={form.control}
+                name="restSeconds"
+                render={({ field }) => {
+                  const restValue =
+                    field.value && field.value !== ""
+                      ? Number(field.value)
+                      : 0
+                  const restLabel =
+                    Number.isFinite(restValue) && restValue >= 0
+                      ? formatRestSeconds(restValue) || "0s"
+                      : "0s"
+
+                  return (
+                    <FormItem className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <FormLabel>Rest (sec)</FormLabel>
+                        <span className="text-xs text-muted-foreground">
+                          {restLabel}
+                        </span>
+                      </div>
+                      <FormControl>
+                        <input
+                          type="range"
+                          min={0}
+                          max={180}
+                          step={30}
+                          value={restValue}
+                          onChange={(event) =>
+                            field.onChange(event.target.value)
+                          }
+                          className="h-2 w-full cursor-pointer accent-primary"
+                        />
+                      </FormControl>
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>0s</span>
+                        <span>3 min</span>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+            ) : null}
           </CardContent>
         </Card>
 

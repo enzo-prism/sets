@@ -159,3 +159,7 @@ export function getWorkoutGroupById(id?: string | null) {
   }
   return WORKOUT_GROUPS.find((group) => group.id === id) ?? null
 }
+
+export function isRecoveryWorkout(type?: WorkoutType | null) {
+  return getWorkoutGroupIdForType(type) === "recover"
+}

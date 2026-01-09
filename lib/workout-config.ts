@@ -1,4 +1,5 @@
 import type { LoggedSet, WorkoutType } from "@/lib/types"
+import { isRecoveryWorkout } from "@/lib/workouts"
 
 const DURATION_WORKOUTS = new Set<WorkoutType>(["plank", "sauna"])
 const WEIGHTLESS_WORKOUTS = new Set<WorkoutType>([
@@ -12,14 +13,20 @@ const WEIGHTLESS_WORKOUTS = new Set<WorkoutType>([
 
 export function getWorkoutFieldVisibility(workoutType?: WorkoutType | null) {
   if (!workoutType) {
-    return { showWeight: true, showReps: true, showDuration: false }
+    return {
+      showWeight: true,
+      showReps: true,
+      showDuration: false,
+      showRest: true,
+    }
   }
 
   const showDuration = DURATION_WORKOUTS.has(workoutType)
   const showWeight = !showDuration && !WEIGHTLESS_WORKOUTS.has(workoutType)
   const showReps = !showDuration
+  const showRest = !isRecoveryWorkout(workoutType)
 
-  return { showWeight, showReps, showDuration }
+  return { showWeight, showReps, showDuration, showRest }
 }
 
 export function formatRestSeconds(value?: number | null) {
@@ -33,10 +40,20 @@ export function formatRestSeconds(value?: number | null) {
   return `${value}s`
 }
 
+export function formatDurationSeconds(value?: number | null) {
+  if (value == null || !Number.isFinite(value)) {
+    return ""
+  }
+  if (value >= 60 && value % 60 === 0) {
+    const minutes = value / 60
+    return minutes === 1 ? "1 min" : `${minutes} min`
+  }
+  return `${value}s`
+}
+
 export function buildSetStats(set: LoggedSet) {
-  const { showWeight, showReps, showDuration } = getWorkoutFieldVisibility(
-    set.workoutType ?? null
-  )
+  const { showWeight, showReps, showDuration, showRest } =
+    getWorkoutFieldVisibility(set.workoutType ?? null)
   const stats: string[] = []
 
   if (showWeight && set.weightLb != null) {
@@ -46,9 +63,12 @@ export function buildSetStats(set: LoggedSet) {
     stats.push(`${set.reps} reps`)
   }
   if (showDuration && set.durationSeconds != null) {
-    stats.push(`${set.durationSeconds}s duration`)
+    const durationLabel = formatDurationSeconds(set.durationSeconds)
+    if (durationLabel) {
+      stats.push(`${durationLabel} duration`)
+    }
   }
-  if (set.restSeconds != null) {
+  if (showRest && set.restSeconds != null) {
     const restLabel = formatRestSeconds(set.restSeconds)
     if (restLabel) {
       stats.push(`${restLabel} rest`)

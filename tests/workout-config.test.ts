@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   buildSetStats,
+  formatDurationSeconds,
   formatRestSeconds,
   getWorkoutFieldVisibility,
 } from "@/lib/workout-config"
@@ -13,6 +14,7 @@ describe("getWorkoutFieldVisibility", () => {
       showWeight: false,
       showReps: false,
       showDuration: true,
+      showRest: true,
     })
   })
 
@@ -22,6 +24,7 @@ describe("getWorkoutFieldVisibility", () => {
       showWeight: false,
       showReps: true,
       showDuration: false,
+      showRest: true,
     })
   })
 
@@ -31,6 +34,17 @@ describe("getWorkoutFieldVisibility", () => {
       showWeight: true,
       showReps: true,
       showDuration: false,
+      showRest: true,
+    })
+  })
+
+  it("hides rest for recovery workouts", () => {
+    const visibility = getWorkoutFieldVisibility("sauna")
+    expect(visibility).toEqual({
+      showWeight: false,
+      showReps: false,
+      showDuration: true,
+      showRest: false,
     })
   })
 })
@@ -59,5 +73,12 @@ describe("formatRestSeconds", () => {
     expect(formatRestSeconds(120)).toBe("2 min")
     expect(formatRestSeconds(180)).toBe("3 min")
     expect(formatRestSeconds(45)).toBe("45s")
+  })
+})
+
+describe("formatDurationSeconds", () => {
+  it("formats minute-based durations", () => {
+    expect(formatDurationSeconds(600)).toBe("10 min")
+    expect(formatDurationSeconds(90)).toBe("90s")
   })
 })

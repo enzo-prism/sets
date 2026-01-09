@@ -13,14 +13,17 @@ import {
 import { Separator } from "@/components/ui/separator"
 import type { LoggedSet } from "@/lib/types"
 import { formatPt } from "@/lib/time"
-import { formatRestSeconds, getWorkoutFieldVisibility } from "@/lib/workout-config"
+import {
+  formatDurationSeconds,
+  formatRestSeconds,
+  getWorkoutFieldVisibility,
+} from "@/lib/workout-config"
 import { SetCard } from "@/components/set-card"
 
 export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
   const [open, setOpen] = React.useState(false)
-  const { showWeight, showReps, showDuration } = getWorkoutFieldVisibility(
-    set.workoutType ?? null
-  )
+  const { showWeight, showReps, showDuration, showRest } =
+    getWorkoutFieldVisibility(set.workoutType ?? null)
 
   return (
     <>
@@ -68,22 +71,24 @@ export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
                   </span>
                   <span>
                     {set.durationSeconds != null
-                      ? `${set.durationSeconds}s`
+                      ? formatDurationSeconds(set.durationSeconds)
                       : "—"}
                   </span>
                 </div>
               ) : null}
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <Timer className="h-4 w-4" />
-                  Rest
-                </span>
-                <span>
-                  {set.restSeconds != null
-                    ? formatRestSeconds(set.restSeconds)
-                    : "—"}
-                </span>
-              </div>
+              {showRest ? (
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-2 text-muted-foreground">
+                    <Timer className="h-4 w-4" />
+                    Rest
+                  </span>
+                  <span>
+                    {set.restSeconds != null
+                      ? formatRestSeconds(set.restSeconds)
+                      : "—"}
+                  </span>
+                </div>
+              ) : null}
             </div>
             <Separator />
             <div className="text-xs text-muted-foreground">
