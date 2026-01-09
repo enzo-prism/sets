@@ -4,6 +4,7 @@ import * as React from "react"
 import type { LoggedSet } from "@/lib/types"
 import { getDeviceId } from "@/lib/device"
 import { loadSets, saveSets } from "@/lib/storage"
+import { mergeSets } from "@/lib/sync"
 
 type SetsContextValue = {
   sets: LoggedSet[]
@@ -20,38 +21,11 @@ type SetsContextValue = {
 
 const SetsContext = React.createContext<SetsContextValue | null>(null)
 
-const isSupabaseEnabled = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
-
 function createId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID()
   }
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
-}
-
-function mergeSets(localSets: LoggedSet[], remoteSets: LoggedSet[]) {
-  const merged = new Map<string, LoggedSet>()
-
-  for (const set of localSets) {
-    merged.set(set.id, set)
-  }
-
-  for (const set of remoteSets) {
-    const existing = merged.get(set.id)
-    if (!existing) {
-      merged.set(set.id, set)
-      continue
-    }
-    const existingUpdated = existing.updatedAtISO || existing.createdAtISO
-    const incomingUpdated = set.updatedAtISO || set.createdAtISO
-    if (incomingUpdated > existingUpdated) {
-      merged.set(set.id, set)
-    }
-  }
-
-  return Array.from(merged.values())
 }
 
 export function SetsProvider({ children }: { children: React.ReactNode }) {
@@ -78,7 +52,7 @@ export function SetsProvider({ children }: { children: React.ReactNode }) {
   }, [sets])
 
   React.useEffect(() => {
-    if (!isSupabaseEnabled || !deviceId) {
+    if (!deviceId) {
       return
     }
     let isActive = true
@@ -89,6 +63,10 @@ export function SetsProvider({ children }: { children: React.ReactNode }) {
           headers: { "x-device-id": deviceId },
         })
         if (!response.ok) {
+          const errorText = await response.text()
+          if (errorText) {
+            console.warn("Supabase sync skipped:", errorText)
+          }
           return
         }
         const remoteSets = (await response.json()) as LoggedSet[]
@@ -128,7 +106,7 @@ export function SetsProvider({ children }: { children: React.ReactNode }) {
 
   const syncAdd = React.useCallback(
     async (nextSet: LoggedSet) => {
-      if (!isSupabaseEnabled || !deviceId) {
+      if (!deviceId) {
         return
       }
       try {
@@ -152,7 +130,7 @@ export function SetsProvider({ children }: { children: React.ReactNode }) {
       id: string,
       updates: Omit<LoggedSet, "id" | "createdAtISO" | "updatedAtISO">
     ) => {
-      if (!isSupabaseEnabled || !deviceId) {
+      if (!deviceId) {
         return
       }
       try {
@@ -173,7 +151,7 @@ export function SetsProvider({ children }: { children: React.ReactNode }) {
 
   const syncDelete = React.useCallback(
     async (id: string) => {
-      if (!isSupabaseEnabled || !deviceId) {
+      if (!deviceId) {
         return
       }
       try {
