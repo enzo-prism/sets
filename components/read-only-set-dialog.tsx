@@ -22,7 +22,7 @@ export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
     <>
       <SetCard set={set} readOnly onClick={() => setOpen(true)} />
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-md overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{set.workoutType ?? "Untitled set"}</DialogTitle>
           </DialogHeader>

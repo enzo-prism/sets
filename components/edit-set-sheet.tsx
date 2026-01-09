@@ -16,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Separator } from "@/components/ui/separator"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { SetForm, SetFormPayload } from "@/components/set-form"
@@ -65,11 +64,14 @@ export function EditSetSheet({ set, open, onOpenChange }: EditSetSheetProps) {
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md" data-testid="edit-sheet">
+      <SheetContent
+        className="max-h-[100dvh] w-full overflow-hidden sm:max-w-md"
+        data-testid="edit-sheet"
+      >
         <SheetHeader>
           <SheetTitle>Edit set</SheetTitle>
         </SheetHeader>
-        <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-6">
           {set ? (
             <div className="space-y-6 pb-6">
               <Card className="border-muted/60 bg-card/80 shadow-sm">
@@ -129,7 +131,7 @@ export function EditSetSheet({ set, open, onOpenChange }: EditSetSheetProps) {
               Select a set to edit.
             </div>
           )}
-        </ScrollArea>
+        </div>
       </SheetContent>
     </Sheet>
   )

@@ -48,7 +48,8 @@ export function SetsProvider({ children }: { children: React.ReactNode }) {
     setsRef.current = initialSets
     setSets(initialSets)
     const pendingDeletes = loadPendingDeletes()
-    const pendingSync = loadPendingSync() || pendingDeletes.length > 0
+    const pendingSync =
+      loadPendingSync() || pendingDeletes.length > 0 || initialSets.length > 0
     pendingDeletesRef.current = pendingDeletes
     pendingSyncRef.current = pendingSync
     savePendingSync(pendingSync)

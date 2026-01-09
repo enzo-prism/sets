@@ -51,3 +51,27 @@ for (const viewport of viewports) {
     }
   })
 }
+
+test("can update a set on mobile", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.addInitScript((set) => {
+    window.localStorage.setItem("sets-tracker:v1", JSON.stringify([set]))
+    window.localStorage.setItem("sets-tracker:device-id", "test-device")
+  }, seedSet)
+
+  await page.goto("/")
+
+  await page.getByRole("button", { name: /pull up/i }).click()
+  await expect(page.getByTestId("edit-sheet")).toBeVisible()
+
+  const repsInput = page.getByLabel("Reps")
+  await repsInput.scrollIntoViewIfNeeded()
+  await repsInput.fill("12")
+
+  const updateButton = page.getByRole("button", { name: /update set/i })
+  await updateButton.scrollIntoViewIfNeeded()
+  await updateButton.click()
+
+  await expect(page.getByTestId("edit-sheet")).toBeHidden()
+  await expect(page.getByText("12 reps")).toBeVisible()
+})
