@@ -54,6 +54,19 @@ pnpm build
 pnpm start
 ```
 
+## Tests
+
+```bash
+pnpm test
+pnpm test:e2e
+```
+
+If Playwright browsers are missing, run:
+
+```bash
+pnpm exec playwright install chromium
+```
+
 ## Deploy to Vercel
 
 1. Push this repo to GitHub/GitLab/Bitbucket.
