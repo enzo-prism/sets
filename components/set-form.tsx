@@ -39,6 +39,7 @@ import {
   toPtDateInput,
   toPtTimeInput,
 } from "@/lib/time"
+import { cn } from "@/lib/utils"
 
 const formSchema = z.object({
   workoutType: z.string().nullable().optional(),
@@ -63,6 +64,7 @@ type SetFormProps = {
   initialValues?: Partial<LoggedSet>
   submitLabel?: string
   onSubmit: (payload: SetFormPayload) => void
+  stickyActions?: boolean
 }
 
 function toNumber(value?: string | null) {
@@ -73,7 +75,12 @@ function toNumber(value?: string | null) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) {
+export function SetForm({
+  initialValues,
+  submitLabel,
+  onSubmit,
+  stickyActions = false,
+}: SetFormProps) {
   const defaults = React.useMemo<FormValues>(
     () => ({
       workoutType: initialValues?.workoutType ?? "",
@@ -137,19 +144,22 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
     : "Pick date"
   const previewIso =
     selectedDate && selectedTime ? ptDateToISO(selectedDate, selectedTime) : null
+  const footerSummary = previewIso
+    ? `Saved as ${formatPt(previewIso)}`
+    : "No performed time set."
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onFormSubmit)}
-        className="space-y-6"
+        className={cn("space-y-5 sm:space-y-6", stickyActions && "pb-4")}
         data-testid="set-form"
       >
         <Card
           data-testid="workout-section"
-          className="border-muted/60 bg-card/80 shadow-sm"
+          className="border-muted/60 bg-card/80 py-5 shadow-sm sm:py-6"
         >
-          <CardHeader className="pb-3">
+          <CardHeader className="px-4 pb-3 sm:px-6">
             <CardTitle className="flex items-center gap-2 text-sm font-semibold">
               <Dumbbell className="h-4 w-4 text-muted-foreground" />
               Workout
@@ -158,7 +168,7 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               Optional. Choose the movement or keep it open-ended.
             </p>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-3 px-4 sm:px-6">
             <FormField
               control={form.control}
               name="workoutType"
@@ -192,9 +202,9 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
 
         <Card
           data-testid="stats-section"
-          className="border-muted/60 bg-card/80 shadow-sm"
+          className="border-muted/60 bg-card/80 py-5 shadow-sm sm:py-6"
         >
-          <CardHeader className="pb-3">
+          <CardHeader className="px-4 pb-3 sm:px-6">
             <CardTitle className="flex items-center justify-between text-sm font-semibold">
               <span className="flex items-center gap-2">
                 <Gauge className="h-4 w-4 text-muted-foreground" />
@@ -206,17 +216,18 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               Leave any field blank if you are logging a simple set.
             </p>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
+          <CardContent className="grid grid-cols-2 gap-3 px-4 sm:grid-cols-3 sm:px-6">
             <FormField
               control={form.control}
               name="weightLb"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-1">
                   <FormLabel>Weight (lb)</FormLabel>
                   <FormControl>
                     <Input
                       inputMode="decimal"
                       placeholder="135"
+                      className="h-11"
                       {...field}
                       value={field.value ?? ""}
                     />
@@ -229,12 +240,13 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               control={form.control}
               name="reps"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-1">
                   <FormLabel>Reps</FormLabel>
                   <FormControl>
                     <Input
                       inputMode="numeric"
                       placeholder="8"
+                      className="h-11"
                       {...field}
                       value={field.value ?? ""}
                     />
@@ -247,12 +259,13 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               control={form.control}
               name="restSeconds"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="col-span-2 sm:col-span-1">
                   <FormLabel>Rest (sec)</FormLabel>
                   <FormControl>
                     <Input
                       inputMode="numeric"
                       placeholder="90"
+                      className="h-11"
                       {...field}
                       value={field.value ?? ""}
                     />
@@ -266,9 +279,9 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
 
         <Card
           data-testid="time-section"
-          className="border-muted/60 bg-card/80 shadow-sm"
+          className="border-muted/60 bg-card/80 py-5 shadow-sm sm:py-6"
         >
-          <CardHeader className="pb-3">
+          <CardHeader className="px-4 pb-3 sm:px-6">
             <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold">
               <span className="flex items-center gap-2">
                 <CalendarClock className="h-4 w-4 text-muted-foreground" />
@@ -282,7 +295,7 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               Displayed in America/Los_Angeles. Leave blank to skip.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 px-4 sm:px-6">
             <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
               <FormField
                 control={form.control}
@@ -332,7 +345,12 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
                   <FormItem>
                     <FormLabel>Time</FormLabel>
                     <FormControl>
-                      <Input type="time" {...field} value={field.value ?? ""} />
+                      <Input
+                        type="time"
+                        className="h-11"
+                        {...field}
+                        value={field.value ?? ""}
+                      />
                     </FormControl>
                   </FormItem>
                 )}
@@ -355,15 +373,18 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
           </CardContent>
         </Card>
 
-        <Separator />
+        {stickyActions ? <Separator className="hidden sm:block" /> : <Separator />}
 
-        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
-          <p className="text-xs text-muted-foreground">
-            {previewIso
-              ? `Saved as ${formatPt(previewIso)}`
-              : "No performed time set."}
-          </p>
-          <Button type="submit" className="w-full sm:w-auto">
+        <div
+          className={cn(
+            "grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center",
+            stickyActions &&
+              "sticky bottom-0 -mx-4 border-t border-muted/60 bg-background/95 px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-0"
+          )}
+          data-testid={stickyActions ? "set-form-footer" : undefined}
+        >
+          <p className="text-xs text-muted-foreground">{footerSummary}</p>
+          <Button type="submit" className="h-11 w-full sm:w-auto">
             {submitLabel ?? "Save set"}
           </Button>
         </div>
