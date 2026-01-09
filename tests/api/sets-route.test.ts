@@ -63,4 +63,45 @@ describe("api/sets route", () => {
     const json = await response.json()
     expect(json.error).toMatch(/invalid payload/i)
   })
+
+  it("retries POST when duration column is missing", async () => {
+    const selectMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: {
+          message:
+            "Could not find the 'duration_seconds' column of 'sets' in the schema cache",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: "set-1" }],
+        error: null,
+      })
+
+    const insertMock = vi.fn(() => ({ select: selectMock }))
+    const supabase = {
+      from: vi.fn(() => ({
+        select: vi.fn(),
+        insert: insertMock,
+      })),
+    }
+    mockGetSupabaseServerClient.mockReturnValue(supabase as never)
+
+    const request = new Request("http://localhost/api/sets", {
+      method: "POST",
+      body: JSON.stringify({
+        workoutType: "plank",
+        weightLb: null,
+        reps: null,
+        restSeconds: 30,
+        durationSeconds: 90,
+        performedAtISO: "2026-01-09T20:00:00.000Z",
+      }),
+    })
+
+    const response = await POST(request)
+    expect(response.status).toBe(201)
+    expect(insertMock).toHaveBeenCalledTimes(2)
+  })
 })

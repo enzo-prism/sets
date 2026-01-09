@@ -67,15 +67,36 @@ function buildSet(input: CreatePayload, nowIso: string): LoggedSet {
 }
 
 function buildUpdateRow(input: UpdatePayload, nowIso: string) {
-  return {
+  const row: {
+    workout_type: WorkoutType | null
+    weight_lb: number | null
+    reps: number | null
+    rest_seconds: number | null
+    performed_at_iso: string | null
+    updated_at_iso: string
+    duration_seconds?: number | null
+  } = {
     workout_type: normalizeWorkoutType(input.workoutType),
     weight_lb: input.weightLb ?? null,
     reps: input.reps ?? null,
     rest_seconds: input.restSeconds ?? null,
-    duration_seconds: input.durationSeconds ?? null,
     performed_at_iso: input.performedAtISO ?? null,
     updated_at_iso: nowIso,
   }
+
+  if (input.durationSeconds !== undefined) {
+    row.duration_seconds = input.durationSeconds ?? null
+  }
+
+  return row
+}
+
+function isMissingDurationColumn(error: { message?: string } | null) {
+  const message = error?.message?.toLowerCase() ?? ""
+  return (
+    message.includes("duration_seconds") &&
+    (message.includes("schema cache") || message.includes("does not exist"))
+  )
 }
 
 function getSupabaseOrError(): SupabaseOrError {
@@ -149,10 +170,21 @@ export async function POST(request: Request) {
   const nowIso = new Date().toISOString()
   const nextSet = buildSet(parsed.data, nowIso)
 
-  const { data, error: insertError } = await supabase
+  const insertRow = mapSetToRow(nextSet)
+  let { data, error: insertError } = await supabase
     .from("sets")
-    .insert(mapSetToRow(nextSet))
+    .insert(insertRow)
     .select("*")
+
+  if (insertError && isMissingDurationColumn(insertError)) {
+    const { duration_seconds: _ignored, ...fallbackRow } = insertRow
+    const fallback = await supabase
+      .from("sets")
+      .insert(fallbackRow)
+      .select("*")
+    data = fallback.data
+    insertError = fallback.error
+  }
 
   if (insertError) {
     return NextResponse.json({ error: insertError.message }, { status: 500 })
@@ -185,11 +217,23 @@ export async function PATCH(request: Request) {
   const nowIso = new Date().toISOString()
   const { id } = parsed.data
 
-  const { data, error: updateError } = await supabase
+  const updateRow = buildUpdateRow(parsed.data, nowIso)
+  let { data, error: updateError } = await supabase
     .from("sets")
-    .update(buildUpdateRow(parsed.data, nowIso))
+    .update(updateRow)
     .eq("id", id)
     .select("*")
+
+  if (updateError && isMissingDurationColumn(updateError)) {
+    const { duration_seconds: _ignored, ...fallbackRow } = updateRow
+    const fallback = await supabase
+      .from("sets")
+      .update(fallbackRow)
+      .eq("id", id)
+      .select("*")
+    data = fallback.data
+    updateError = fallback.error
+  }
 
   if (updateError) {
     return NextResponse.json({ error: updateError.message }, { status: 500 })
