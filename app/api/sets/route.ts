@@ -27,11 +27,6 @@ type CreatePayload = z.infer<typeof createSchema>
 type UpdatePayload = z.infer<typeof updateSchema>
 type DeletePayload = z.infer<typeof deleteSchema>
 
-type ApiErrorResponse = {
-  error: string
-  details?: unknown
-}
-
 type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseServerClient>>
 type SupabaseOrError = {
   supabase: SupabaseClient | null
@@ -92,16 +87,27 @@ function getSupabaseOrError(): SupabaseOrError {
   return { supabase, error: null }
 }
 
-async function parseJson<T>(request: Request, schema: z.ZodSchema<T>) {
+type ParseResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; details?: unknown }
+
+async function parseJson<T>(
+  request: Request,
+  schema: z.ZodSchema<T>
+): Promise<ParseResult<T>> {
   try {
     const raw = await request.json()
     const parsed = schema.safeParse(raw)
     if (!parsed.success) {
-      return { error: "Invalid payload.", details: parsed.error.flatten() }
+      return {
+        ok: false,
+        error: "Invalid payload.",
+        details: parsed.error.flatten(),
+      }
     }
-    return { data: parsed.data }
+    return { ok: true, data: parsed.data }
   } catch {
-    return { error: "Invalid JSON." }
+    return { ok: false, error: "Invalid JSON." }
   }
 }
 
@@ -130,8 +136,11 @@ export async function POST(request: Request) {
   }
 
   const parsed = await parseJson<CreatePayload>(request, createSchema)
-  if (parsed.error) {
-    return NextResponse.json(parsed, { status: 400 })
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, details: parsed.details },
+      { status: 400 }
+    )
   }
 
   const nowIso = new Date().toISOString()
@@ -163,8 +172,11 @@ export async function PATCH(request: Request) {
   }
 
   const parsed = await parseJson<UpdatePayload>(request, updateSchema)
-  if (parsed.error) {
-    return NextResponse.json(parsed, { status: 400 })
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, details: parsed.details },
+      { status: 400 }
+    )
   }
 
   const nowIso = new Date().toISOString()
@@ -195,8 +207,11 @@ export async function DELETE(request: Request) {
   }
 
   const parsed = await parseJson<DeletePayload>(request, deleteSchema)
-  if (parsed.error) {
-    return NextResponse.json(parsed, { status: 400 })
+  if (!parsed.ok) {
+    return NextResponse.json(
+      { error: parsed.error, details: parsed.details },
+      { status: 400 }
+    )
   }
 
   const { error: deleteError } = await supabase
