@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
+import { CalendarClock, Dumbbell, Repeat, Timer } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,21 +28,33 @@ export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
           </DialogHeader>
           <div className="space-y-4 text-sm">
             <div className="space-y-2">
-              <div className="text-muted-foreground">Performed</div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <CalendarClock className="h-4 w-4" />
+                Performed
+              </div>
               <div>{formatPt(set.performedAtISO)}</div>
             </div>
             <Separator />
             <div className="grid gap-3">
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Weight</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Dumbbell className="h-4 w-4" />
+                  Weight
+                </span>
                 <span>{set.weightLb != null ? `${set.weightLb} lb` : "—"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Reps</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Repeat className="h-4 w-4" />
+                  Reps
+                </span>
                 <span>{set.reps != null ? set.reps : "—"}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Rest</span>
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <Timer className="h-4 w-4" />
+                  Rest
+                </span>
                 <span>
                   {set.restSeconds != null ? `${set.restSeconds}s` : "—"}
                 </span>

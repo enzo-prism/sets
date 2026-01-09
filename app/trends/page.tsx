@@ -12,6 +12,14 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
+import {
+  Activity,
+  BarChart3,
+  CalendarDays,
+  CalendarRange,
+  History,
+  LineChart as LineChartIcon,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
@@ -125,13 +133,28 @@ export default function TrendsPage() {
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setRange(getLast7Range())}>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setRange(getLast7Range())}
+            >
+              <History className="h-4 w-4 text-muted-foreground" />
               Last 7 days
             </Button>
-            <Button variant="secondary" onClick={() => setRange(getLast30Range())}>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setRange(getLast30Range())}
+            >
+              <CalendarRange className="h-4 w-4 text-muted-foreground" />
               Last 30 days
             </Button>
-            <Button variant="secondary" onClick={() => setRange(getThisMonthRange())}>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setRange(getThisMonthRange())}
+            >
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
               This month
             </Button>
           </div>
@@ -159,7 +182,10 @@ export default function TrendsPage() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Sets per day</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-muted-foreground" />
+                Sets per day
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <ChartContainer
@@ -189,7 +215,10 @@ export default function TrendsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle>Total volume by workout</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                Total volume by workout
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {volumeByType.length === 0 ? (
@@ -223,7 +252,10 @@ export default function TrendsPage() {
 
           <Card>
             <CardHeader className="space-y-3">
-              <CardTitle>Max weight over time</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <LineChartIcon className="h-4 w-4 text-muted-foreground" />
+                Max weight over time
+              </CardTitle>
               <Select
                 value={selectedType}
                 onValueChange={(value) => setSelectedType(value as WorkoutType)}

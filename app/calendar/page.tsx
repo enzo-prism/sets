@@ -3,6 +3,7 @@
 import * as React from "react"
 import { DateRange } from "react-day-picker"
 import { endOfMonth, startOfMonth, subDays } from "date-fns"
+import { CalendarDays, CalendarRange, History, List } from "lucide-react"
 
 import { Calendar } from "@/components/ui/calendar"
 import { Button } from "@/components/ui/button"
@@ -53,13 +54,28 @@ export default function CalendarPage() {
       <Card>
         <CardContent className="space-y-4 pt-6">
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setRange(getLast7Range())}>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setRange(getLast7Range())}
+            >
+              <History className="h-4 w-4 text-muted-foreground" />
               Last 7 days
             </Button>
-            <Button variant="secondary" onClick={() => setRange(getLast30Range())}>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setRange(getLast30Range())}
+            >
+              <CalendarRange className="h-4 w-4 text-muted-foreground" />
               Last 30 days
             </Button>
-            <Button variant="secondary" onClick={() => setRange(getThisMonthRange())}>
+            <Button
+              variant="secondary"
+              className="gap-2"
+              onClick={() => setRange(getThisMonthRange())}
+            >
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
               This month
             </Button>
           </div>
@@ -75,7 +91,10 @@ export default function CalendarPage() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold">Sets in range</h2>
+          <h2 className="flex items-center gap-2 text-base font-semibold">
+            <List className="h-4 w-4 text-muted-foreground" />
+            Sets in range
+          </h2>
           <span className="text-xs text-muted-foreground">
             {setsInRange.length} total
           </span>

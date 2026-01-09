@@ -180,6 +180,7 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
                     inputMode="decimal"
                     placeholder="135"
                     {...field}
+                    value={field.value ?? ""}
                   />
                 </FormControl>
                 <FormMessage />
@@ -193,7 +194,12 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               <FormItem>
                 <FormLabel>Reps</FormLabel>
                 <FormControl>
-                  <Input inputMode="numeric" placeholder="8" {...field} />
+                  <Input
+                    inputMode="numeric"
+                    placeholder="8"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -206,7 +212,12 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               <FormItem>
                 <FormLabel>Rest (sec)</FormLabel>
                 <FormControl>
-                  <Input inputMode="numeric" placeholder="90" {...field} />
+                  <Input
+                    inputMode="numeric"
+                    placeholder="90"
+                    {...field}
+                    value={field.value ?? ""}
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -263,7 +274,7 @@ export function SetForm({ initialValues, submitLabel, onSubmit }: SetFormProps) 
               render={({ field }) => (
                 <FormItem>
                   <FormControl>
-                    <Input type="time" {...field} />
+                    <Input type="time" {...field} value={field.value ?? ""} />
                   </FormControl>
                 </FormItem>
               )}
