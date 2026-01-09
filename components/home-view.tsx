@@ -55,11 +55,11 @@ export function HomeView() {
       const sourceIso = set.performedAtISO ?? set.createdAtISO
       const dayKey = toPtDayKey(sourceIso) ?? "unknown"
       if (!activeGroup || activeGroup.dayKey !== dayKey) {
-        const label =
+        const dayLabel: string =
           dayKey === "unknown"
             ? "Unknown date"
             : formatPtDayLabel(toPtDateFromInput(dayKey), "EEE, MMM d")
-        activeGroup = { dayKey, label, items: [] }
+        activeGroup = { dayKey, label: dayLabel, items: [] }
         groups.push(activeGroup)
       }
       activeGroup.items.push(set)
