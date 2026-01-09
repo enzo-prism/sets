@@ -30,6 +30,7 @@ const syncSchema = z.object({
 type SyncPayload = z.infer<typeof syncSchema>
 
 type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseServerClient>>
+type SupabaseClientMaybe = ReturnType<typeof getSupabaseServerClient>
 
 type SyncResult = {
   data: LoggedSet[] | null
@@ -46,7 +47,7 @@ function getDeviceId(request: Request) {
   return url.searchParams.get("deviceId") ?? ""
 }
 
-function requireSupabase(): SupabaseClient {
+function requireSupabase(): SupabaseClientMaybe {
   return getSupabaseServerClient()
 }
 
