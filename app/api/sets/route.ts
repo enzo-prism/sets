@@ -32,6 +32,12 @@ type ApiErrorResponse = {
   details?: unknown
 }
 
+type SupabaseClient = NonNullable<ReturnType<typeof getSupabaseServerClient>>
+type SupabaseOrError = {
+  supabase: SupabaseClient | null
+  error: string | null
+}
+
 function createId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
     return crypto.randomUUID()
@@ -74,14 +80,16 @@ function buildUpdateRow(input: UpdatePayload, nowIso: string) {
   }
 }
 
-function getSupabaseOrError() {
+function getSupabaseOrError(): SupabaseOrError {
   const supabase = getSupabaseServerClient()
   if (!supabase) {
     return {
-      error: "Supabase is not configured. Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
-    } as ApiErrorResponse
+      supabase: null,
+      error:
+        "Supabase is not configured. Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY.",
+    }
   }
-  return { supabase }
+  return { supabase, error: null }
 }
 
 async function parseJson<T>(request: Request, schema: z.ZodSchema<T>) {
