@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { Dumbbell, Plus, RefreshCw } from "lucide-react"
+import { Copy, Dumbbell, Plus, RefreshCw } from "lucide-react"
+import { toast } from "sonner"
 
 import { AddSetDialog } from "@/components/add-set-dialog"
 import { DataError } from "@/components/data-error"
@@ -10,7 +11,34 @@ import { EditSetSheet } from "@/components/edit-set-sheet"
 import { SetCard } from "@/components/set-card"
 import { Button } from "@/components/ui/button"
 import { useSets } from "@/providers/sets-provider"
+import { formatSetsForClipboard } from "@/lib/sets-export"
 import { sortSets } from "@/lib/stats"
+
+async function copyTextToClipboard(text: string) {
+  if (navigator?.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text)
+    return
+  }
+
+  const textarea = document.createElement("textarea")
+  textarea.value = text
+  textarea.setAttribute("readonly", "")
+  textarea.style.position = "fixed"
+  textarea.style.top = "0"
+  textarea.style.left = "0"
+  textarea.style.opacity = "0"
+  document.body.appendChild(textarea)
+  textarea.focus()
+  textarea.select()
+  textarea.setSelectionRange(0, text.length)
+
+  const ok = document.execCommand("copy")
+  document.body.removeChild(textarea)
+
+  if (!ok) {
+    throw new Error("Copy failed")
+  }
+}
 
 export function HomeView() {
   const { sets, isLoaded, error, refresh } = useSets()
@@ -68,27 +96,52 @@ export function HomeView() {
     }
   }
 
+  const handleCopySets = async () => {
+    const payload = formatSetsForClipboard(sortedSets)
+    const count = sortedSets.length
+    try {
+      await copyTextToClipboard(payload)
+      toast.success(`Copied ${count === 1 ? "1 set" : `${count} sets`}`)
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to copy sets."
+      toast.error(message)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {error ? <DataError message={error} /> : null}
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <Button
-          variant="ghost"
-          size="icon"
-          className="h-11 w-11"
-          onClick={handleRefresh}
-          aria-label="Refresh sets"
-          disabled={isRefreshing}
+          variant="secondary"
+          className="h-11 gap-2"
+          onClick={handleCopySets}
         >
-          <RefreshCw className={isRefreshing ? "h-5 w-5 animate-spin" : "h-5 w-5"} />
+          <Copy className="h-4 w-4" />
+          Copy sets
         </Button>
-        <AddSetDialog
-          trigger={
-            <Button size="icon" className="h-11 w-11 rounded-full shadow-sm">
-              <Plus className="h-5 w-5" />
-            </Button>
-          }
-        />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-11 w-11"
+            onClick={handleRefresh}
+            aria-label="Refresh sets"
+            disabled={isRefreshing}
+          >
+            <RefreshCw
+              className={isRefreshing ? "h-5 w-5 animate-spin" : "h-5 w-5"}
+            />
+          </Button>
+          <AddSetDialog
+            trigger={
+              <Button size="icon" className="h-11 w-11 rounded-full shadow-sm">
+                <Plus className="h-5 w-5" />
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       {!isLoaded && !error ? (
