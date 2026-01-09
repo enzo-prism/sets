@@ -15,14 +15,9 @@ export type SupabaseSetRow = {
 }
 
 export function getSupabaseServerClient() {
-  const supabaseUrl =
-    process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl = process.env.SUPABASE_URL
   const serviceKey =
-    process.env.SUPABASE_SERVICE_ROLE_KEY ??
-    process.env.SUPABASE_SECRET_KEY ??
-    process.env.SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SECRET_KEY
 
   if (!supabaseUrl || !serviceKey) {
     return null
@@ -52,10 +47,15 @@ export function mapRowToSet(row: SupabaseSetRow): LoggedSet {
 }
 
 export function mapSetToRow(set: LoggedSet, deviceId: string): SupabaseSetRow {
+  const workoutType =
+    set.workoutType && WORKOUT_TYPES.includes(set.workoutType)
+      ? set.workoutType
+      : null
+
   return {
     id: set.id,
     device_id: deviceId,
-    workout_type: set.workoutType ?? null,
+    workout_type: workoutType,
     weight_lb: set.weightLb ?? null,
     reps: set.reps ?? null,
     rest_seconds: set.restSeconds ?? null,

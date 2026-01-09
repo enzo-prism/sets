@@ -14,3 +14,5 @@ export const WORKOUT_TYPES = [
 
 export const STORAGE_KEY = "sets-tracker:v1"
 export const DEVICE_ID_KEY = "sets-tracker:device-id"
+export const PENDING_SYNC_KEY = "sets-tracker:pending-sync"
+export const PENDING_DELETE_KEY = "sets-tracker:pending-deletes"
