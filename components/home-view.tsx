@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button"
 import { useSets } from "@/providers/sets-provider"
 import { formatSetsForClipboard } from "@/lib/sets-export"
 import { sortSets } from "@/lib/stats"
+import { formatPtDayLabel, toPtDateFromInput, toPtDayKey } from "@/lib/time"
+import type { LoggedSet } from "@/lib/types"
 
 async function copyTextToClipboard(text: string) {
   if (navigator?.clipboard?.writeText) {
@@ -44,6 +46,27 @@ export function HomeView() {
   const { sets, isLoaded, error, refresh } = useSets()
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const sortedSets = React.useMemo(() => sortSets(sets), [sets])
+  const groupedSets = React.useMemo(() => {
+    const groups: Array<{ dayKey: string; label: string; items: LoggedSet[] }> =
+      []
+    let activeGroup: (typeof groups)[number] | null = null
+
+    for (const set of sortedSets) {
+      const sourceIso = set.performedAtISO ?? set.createdAtISO
+      const dayKey = toPtDayKey(sourceIso) ?? "unknown"
+      if (!activeGroup || activeGroup.dayKey !== dayKey) {
+        const label =
+          dayKey === "unknown"
+            ? "Unknown date"
+            : formatPtDayLabel(toPtDateFromInput(dayKey), "EEE, MMM d")
+        activeGroup = { dayKey, label, items: [] }
+        groups.push(activeGroup)
+      }
+      activeGroup.items.push(set)
+    }
+
+    return groups
+  }, [sortedSets])
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -162,9 +185,26 @@ export function HomeView() {
           </div>
         </div>
       ) : sortedSets.length > 0 ? (
-        <div className="space-y-3">
-          {sortedSets.map((set) => (
-            <SetCard key={set.id} set={set} onClick={() => openEdit(set.id)} />
+        <div className="space-y-5">
+          {groupedSets.map((group) => (
+            <div key={group.dayKey} className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-muted/60" />
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground/80">
+                  {group.label}
+                </div>
+                <div className="h-px flex-1 bg-muted/60" />
+              </div>
+              <div className="space-y-3">
+                {group.items.map((set) => (
+                  <SetCard
+                    key={set.id}
+                    set={set}
+                    onClick={() => openEdit(set.id)}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : null}
