@@ -418,7 +418,7 @@ export function SetForm({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 px-4 sm:px-6">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
               {showWeight ? (
                 <FormField
                   control={form.control}
