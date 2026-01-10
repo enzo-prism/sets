@@ -88,6 +88,9 @@ type SetFormProps = {
 const RECOVERY_DURATION_MIN = 10 * 60
 const RECOVERY_DURATION_MAX = 25 * 60
 const RECOVERY_DURATION_STEP = 60
+const PLANK_DURATION_MIN = 30
+const PLANK_DURATION_MAX = 2 * 60
+const PLANK_DURATION_STEP = 30
 
 function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
@@ -97,12 +100,17 @@ function snapToStep(value: number, step: number) {
   return Math.round(value / step) * step
 }
 
-function coerceRecoveryDuration(value?: number | null) {
+function coerceDuration(
+  value: number | null | undefined,
+  min: number,
+  max: number,
+  step: number
+) {
   if (value == null || !Number.isFinite(value)) {
-    return RECOVERY_DURATION_MIN
+    return min
   }
-  const snapped = snapToStep(value, RECOVERY_DURATION_STEP)
-  return clampNumber(snapped, RECOVERY_DURATION_MIN, RECOVERY_DURATION_MAX)
+  const snapped = snapToStep(value, step)
+  return clampNumber(snapped, min, max)
 }
 
 function toNumber(value?: string | null) {
@@ -192,8 +200,26 @@ export function SetForm({
   const { showWeight, showReps, showDuration, showRest } =
     getWorkoutFieldVisibility(activeWorkoutType)
   const isRecovery = isRecoveryWorkout(activeWorkoutType)
-  const showDurationSlider = showDuration && isRecovery
-  const showDurationInput = showDuration && !isRecovery
+  const isPlank = activeWorkoutType === "plank"
+  const showDurationSlider = showDuration && (isRecovery || isPlank)
+  const showDurationInput = showDuration && !showDurationSlider
+  const durationSliderConfig = React.useMemo(() => {
+    if (!showDurationSlider) {
+      return null
+    }
+    if (isRecovery) {
+      return {
+        min: RECOVERY_DURATION_MIN,
+        max: RECOVERY_DURATION_MAX,
+        step: RECOVERY_DURATION_STEP,
+      }
+    }
+    return {
+      min: PLANK_DURATION_MIN,
+      max: PLANK_DURATION_MAX,
+      step: PLANK_DURATION_STEP,
+    }
+  }, [isRecovery, showDurationSlider])
   const [selectedCategory, setSelectedCategory] = React.useState<string | null>(
     null
   )
@@ -238,16 +264,21 @@ export function SetForm({
   const isBodyweight = Boolean(weightIsBodyweight)
 
   React.useEffect(() => {
-    if (!showDurationSlider) {
+    if (!durationSliderConfig) {
       return
     }
     const current = toNumber(selectedDuration)
-    const clamped = coerceRecoveryDuration(current)
+    const clamped = coerceDuration(
+      current,
+      durationSliderConfig.min,
+      durationSliderConfig.max,
+      durationSliderConfig.step
+    )
     const nextValue = String(clamped)
     if ((selectedDuration ?? "") !== nextValue) {
       form.setValue("durationSeconds", nextValue)
     }
-  }, [form, selectedDuration, showDurationSlider])
+  }, [durationSliderConfig, form, selectedDuration])
   const dateLabel = selectedDate
     ? format(toPtDateFromInput(selectedDate), "PPP")
     : "Pick date"
@@ -490,11 +521,18 @@ export function SetForm({
                 control={form.control}
                 name="durationSeconds"
                 render={({ field }) => {
-                  const durationValue = coerceRecoveryDuration(
-                    toNumber(field.value)
-                  )
+                  const durationValue = durationSliderConfig
+                    ? coerceDuration(
+                        toNumber(field.value),
+                        durationSliderConfig.min,
+                        durationSliderConfig.max,
+                        durationSliderConfig.step
+                      )
+                    : 0
                   const durationLabel =
-                    formatDurationSeconds(durationValue) || "10 min"
+                    formatDurationSeconds(durationValue) ||
+                    formatDurationSeconds(durationSliderConfig?.min ?? null) ||
+                    "0s"
 
                   return (
                     <FormItem className="space-y-3">
@@ -507,9 +545,9 @@ export function SetForm({
                       <FormControl>
                         <input
                           type="range"
-                          min={RECOVERY_DURATION_MIN}
-                          max={RECOVERY_DURATION_MAX}
-                          step={RECOVERY_DURATION_STEP}
+                          min={durationSliderConfig?.min ?? 0}
+                          max={durationSliderConfig?.max ?? 0}
+                          step={durationSliderConfig?.step ?? 1}
                           value={durationValue}
                           onChange={(event) =>
                             field.onChange(event.target.value)
@@ -519,10 +557,10 @@ export function SetForm({
                       </FormControl>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          {formatDurationSeconds(RECOVERY_DURATION_MIN)}
+                          {formatDurationSeconds(durationSliderConfig?.min ?? 0)}
                         </span>
                         <span>
-                          {formatDurationSeconds(RECOVERY_DURATION_MAX)}
+                          {formatDurationSeconds(durationSliderConfig?.max ?? 0)}
                         </span>
                       </div>
                       <FormMessage />
