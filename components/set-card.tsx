@@ -48,9 +48,7 @@ export function SetCard({ set, onClick, readOnly }: SetCardProps) {
             </Badge>
           ))}
         </div>
-      ) : (
-        <div className="h-5 w-full" aria-hidden="true" />
-      )}
+      ) : null}
     </Button>
   )
 }
