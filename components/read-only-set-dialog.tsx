@@ -16,6 +16,7 @@ import { formatPt } from "@/lib/time"
 import {
   formatDurationSeconds,
   formatRestSeconds,
+  formatWeightLabel,
   getWorkoutFieldVisibility,
 } from "@/lib/workout-config"
 import { SetCard } from "@/components/set-card"
@@ -24,6 +25,7 @@ export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
   const [open, setOpen] = React.useState(false)
   const { showWeight, showReps, showDuration, showRest } =
     getWorkoutFieldVisibility(set.workoutType ?? null)
+  const weightLabel = formatWeightLabel(set)
 
   return (
     <>
@@ -49,9 +51,7 @@ export function ReadOnlySetDialog({ set }: { set: LoggedSet }) {
                     <Dumbbell className="h-4 w-4" />
                     Weight
                   </span>
-                  <span>
-                    {set.weightLb != null ? `${set.weightLb} lb` : "—"}
-                  </span>
+                  <span>{weightLabel || "—"}</span>
                 </div>
               ) : null}
               {showReps ? (

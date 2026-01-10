@@ -1,5 +1,5 @@
 import type { LoggedSet, WorkoutType } from "@/lib/types"
-import { isRecoveryWorkout } from "@/lib/workouts"
+import { isRecoveryWorkout, isSupplementWorkout } from "@/lib/workouts"
 
 const DURATION_WORKOUTS = new Set<WorkoutType>(["plank", "sauna"])
 const WEIGHTLESS_WORKOUTS = new Set<WorkoutType>([
@@ -22,9 +22,11 @@ export function getWorkoutFieldVisibility(workoutType?: WorkoutType | null) {
   }
 
   const showDuration = DURATION_WORKOUTS.has(workoutType)
-  const showWeight = !showDuration && !WEIGHTLESS_WORKOUTS.has(workoutType)
-  const showReps = !showDuration
-  const showRest = !isRecoveryWorkout(workoutType)
+  const isSupplement = isSupplementWorkout(workoutType)
+  const showWeight =
+    !isSupplement && !showDuration && !WEIGHTLESS_WORKOUTS.has(workoutType)
+  const showReps = !isSupplement && !showDuration
+  const showRest = !isSupplement && !isRecoveryWorkout(workoutType)
 
   return { showWeight, showReps, showDuration, showRest }
 }
@@ -51,13 +53,28 @@ export function formatDurationSeconds(value?: number | null) {
   return `${value}s`
 }
 
+export function formatWeightLabel(
+  set: Pick<LoggedSet, "weightLb" | "weightIsBodyweight">
+) {
+  if (set.weightIsBodyweight) {
+    return "BW"
+  }
+  if (set.weightLb == null || !Number.isFinite(set.weightLb)) {
+    return ""
+  }
+  return `${set.weightLb} lb`
+}
+
 export function buildSetStats(set: LoggedSet) {
   const { showWeight, showReps, showDuration, showRest } =
     getWorkoutFieldVisibility(set.workoutType ?? null)
   const stats: string[] = []
 
-  if (showWeight && set.weightLb != null) {
-    stats.push(`${set.weightLb} lb`)
+  if (showWeight) {
+    const weightLabel = formatWeightLabel(set)
+    if (weightLabel) {
+      stats.push(weightLabel)
+    }
   }
   if (showReps && set.reps != null) {
     stats.push(`${set.reps} reps`)

@@ -7,6 +7,7 @@ const rowBase: SupabaseSetRow = {
   device_id: "device-1",
   workout_type: "bench press",
   weight_lb: 185,
+  weight_is_bodyweight: false,
   reps: 5,
   rest_seconds: 120,
   duration_seconds: 45,
@@ -20,6 +21,7 @@ describe("mapRowToSet", () => {
     const set = mapRowToSet(rowBase)
     expect(set.workoutType).toBe("bench press")
     expect(set.weightLb).toBe(185)
+    expect(set.weightIsBodyweight).toBe(false)
     expect(set.durationSeconds).toBe(45)
   })
 
@@ -35,6 +37,7 @@ describe("mapSetToRow", () => {
       id: "set-1",
       workoutType: "squat",
       weightLb: 225,
+      weightIsBodyweight: true,
       reps: 3,
       restSeconds: 180,
       durationSeconds: 90,
@@ -47,7 +50,8 @@ describe("mapSetToRow", () => {
 
     expect(row.device_id).toBe("shared")
     expect(row.workout_type).toBe("squat")
-    expect(row.weight_lb).toBe(225)
+    expect(row.weight_lb).toBeNull()
+    expect(row.weight_is_bodyweight).toBe(true)
     expect(row.reps).toBe(3)
     expect(row.duration_seconds).toBe(90)
   })

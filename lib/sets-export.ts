@@ -5,6 +5,7 @@ type ExportedSet = {
   id: string
   workout_type: string | null
   weight_lb: number | null
+  weight_is_bodyweight: boolean
   reps: number | null
   rest_seconds: number | null
   duration_seconds: number | null
@@ -38,7 +39,8 @@ export function formatSetsForClipboard(sets: LoggedSet[]) {
       return {
         id: set.id,
         workout_type: set.workoutType ?? null,
-        weight_lb: set.weightLb ?? null,
+        weight_lb: set.weightIsBodyweight ? null : set.weightLb ?? null,
+        weight_is_bodyweight: set.weightIsBodyweight ?? false,
         reps: set.reps ?? null,
         rest_seconds: set.restSeconds ?? null,
         duration_seconds: set.durationSeconds ?? null,

@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic"
 const setInputSchema = z.object({
   workoutType: z.string().nullable().optional(),
   weightLb: z.number().nullable().optional(),
+  weightIsBodyweight: z.boolean().nullable().optional(),
   reps: z.number().int().nullable().optional(),
   restSeconds: z.number().int().nullable().optional(),
   durationSeconds: z.number().int().nullable().optional(),
@@ -53,10 +54,14 @@ function normalizeWorkoutType(
 }
 
 function buildSet(input: CreatePayload, nowIso: string): LoggedSet {
+  const weightIsBodyweight = input.weightIsBodyweight ?? false
+  const weightLb = weightIsBodyweight ? null : input.weightLb ?? null
+
   return {
     id: createId(),
     workoutType: normalizeWorkoutType(input.workoutType),
-    weightLb: input.weightLb ?? null,
+    weightLb,
+    weightIsBodyweight,
     reps: input.reps ?? null,
     restSeconds: input.restSeconds ?? null,
     durationSeconds: input.durationSeconds ?? null,
@@ -67,9 +72,13 @@ function buildSet(input: CreatePayload, nowIso: string): LoggedSet {
 }
 
 function buildUpdateRow(input: UpdatePayload, nowIso: string) {
+  const weightIsBodyweight = input.weightIsBodyweight ?? false
+  const weightLb = weightIsBodyweight ? null : input.weightLb ?? null
+
   const row: {
     workout_type: WorkoutType | null
     weight_lb: number | null
+    weight_is_bodyweight: boolean | null
     reps: number | null
     rest_seconds: number | null
     performed_at_iso: string | null
@@ -77,7 +86,8 @@ function buildUpdateRow(input: UpdatePayload, nowIso: string) {
     duration_seconds?: number | null
   } = {
     workout_type: normalizeWorkoutType(input.workoutType),
-    weight_lb: input.weightLb ?? null,
+    weight_lb: weightLb,
+    weight_is_bodyweight: weightIsBodyweight,
     reps: input.reps ?? null,
     rest_seconds: input.restSeconds ?? null,
     performed_at_iso: input.performedAtISO ?? null,
@@ -91,12 +101,35 @@ function buildUpdateRow(input: UpdatePayload, nowIso: string) {
   return row
 }
 
-function isMissingDurationColumn(error: { message?: string } | null) {
+const OPTIONAL_SET_COLUMNS = ["duration_seconds", "weight_is_bodyweight"] as const
+
+type OptionalSetColumn = (typeof OPTIONAL_SET_COLUMNS)[number]
+
+function findMissingOptionalColumn(
+  error: { message?: string } | null
+): OptionalSetColumn | null {
   const message = error?.message?.toLowerCase() ?? ""
-  return (
-    message.includes("duration_seconds") &&
-    (message.includes("schema cache") || message.includes("does not exist"))
-  )
+  if (!message) {
+    return null
+  }
+  for (const column of OPTIONAL_SET_COLUMNS) {
+    if (
+      message.includes(column) &&
+      (message.includes("schema cache") || message.includes("does not exist"))
+    ) {
+      return column
+    }
+  }
+  return null
+}
+
+function omitOptionalColumn(
+  row: Record<string, unknown>,
+  column: OptionalSetColumn
+) {
+  const next = { ...row }
+  delete next[column]
+  return next
 }
 
 function getSupabaseOrError(): SupabaseOrError {
@@ -171,19 +204,26 @@ export async function POST(request: Request) {
   const nextSet = buildSet(parsed.data, nowIso)
 
   const insertRow = mapSetToRow(nextSet)
+  let attemptRow: Record<string, unknown> = insertRow
+  const removedColumns = new Set<OptionalSetColumn>()
   let { data, error: insertError } = await supabase
     .from("sets")
-    .insert(insertRow)
+    .insert(attemptRow)
     .select("*")
 
-  if (insertError && isMissingDurationColumn(insertError)) {
-    const { duration_seconds: _ignored, ...fallbackRow } = insertRow
-    const fallback = await supabase
+  while (insertError) {
+    const missingColumn = findMissingOptionalColumn(insertError)
+    if (!missingColumn || removedColumns.has(missingColumn)) {
+      break
+    }
+    removedColumns.add(missingColumn)
+    attemptRow = omitOptionalColumn(attemptRow, missingColumn)
+    const retry = await supabase
       .from("sets")
-      .insert(fallbackRow)
+      .insert(attemptRow)
       .select("*")
-    data = fallback.data
-    insertError = fallback.error
+    data = retry.data
+    insertError = retry.error
   }
 
   if (insertError) {
@@ -218,21 +258,28 @@ export async function PATCH(request: Request) {
   const { id } = parsed.data
 
   const updateRow = buildUpdateRow(parsed.data, nowIso)
+  let attemptRow: Record<string, unknown> = updateRow
+  const removedColumns = new Set<OptionalSetColumn>()
   let { data, error: updateError } = await supabase
     .from("sets")
-    .update(updateRow)
+    .update(attemptRow)
     .eq("id", id)
     .select("*")
 
-  if (updateError && isMissingDurationColumn(updateError)) {
-    const { duration_seconds: _ignored, ...fallbackRow } = updateRow
-    const fallback = await supabase
+  while (updateError) {
+    const missingColumn = findMissingOptionalColumn(updateError)
+    if (!missingColumn || removedColumns.has(missingColumn)) {
+      break
+    }
+    removedColumns.add(missingColumn)
+    attemptRow = omitOptionalColumn(attemptRow, missingColumn)
+    const retry = await supabase
       .from("sets")
-      .update(fallbackRow)
+      .update(attemptRow)
       .eq("id", id)
       .select("*")
-    data = fallback.data
-    updateError = fallback.error
+    data = retry.data
+    updateError = retry.error
   }
 
   if (updateError) {

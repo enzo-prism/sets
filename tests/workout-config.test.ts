@@ -47,6 +47,16 @@ describe("getWorkoutFieldVisibility", () => {
       showRest: false,
     })
   })
+
+  it("hides weight, reps, and rest for supplements", () => {
+    const visibility = getWorkoutFieldVisibility("creatine")
+    expect(visibility).toEqual({
+      showWeight: false,
+      showReps: false,
+      showDuration: false,
+      showRest: false,
+    })
+  })
 })
 
 describe("buildSetStats", () => {
@@ -64,6 +74,23 @@ describe("buildSetStats", () => {
     }
 
     expect(buildSetStats(set)).toEqual(["90s duration", "45s rest"])
+  })
+
+  it("uses BW for bodyweight sets", () => {
+    const set: LoggedSet = {
+      id: "set-2",
+      workoutType: "pull up",
+      weightLb: 35,
+      weightIsBodyweight: true,
+      reps: 8,
+      restSeconds: 60,
+      durationSeconds: null,
+      performedAtISO: "2026-01-10T20:35:00.000Z",
+      createdAtISO: "2026-01-10T20:00:00.000Z",
+      updatedAtISO: "2026-01-10T20:10:00.000Z",
+    }
+
+    expect(buildSetStats(set)).toEqual(["BW", "8 reps", "1 min rest"])
   })
 })
 

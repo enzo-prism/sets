@@ -3,6 +3,7 @@ create table if not exists public.sets (
   device_id text not null,
   workout_type text,
   weight_lb double precision,
+  weight_is_bodyweight boolean default false,
   reps integer,
   rest_seconds integer,
   duration_seconds integer,

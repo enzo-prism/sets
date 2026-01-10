@@ -58,6 +58,7 @@ import {
 const formSchema = z.object({
   workoutType: z.string().nullable().optional(),
   weightLb: z.string().nullable().optional(),
+  weightIsBodyweight: z.boolean().optional(),
   reps: z.string().nullable().optional(),
   restSeconds: z.string().nullable().optional(),
   durationSeconds: z.string().nullable().optional(),
@@ -70,6 +71,7 @@ type FormValues = z.infer<typeof formSchema>
 export type SetFormPayload = {
   workoutType: WorkoutType | null
   weightLb: number | null
+  weightIsBodyweight: boolean
   reps: number | null
   restSeconds: number | null
   durationSeconds: number | null
@@ -124,6 +126,7 @@ export function SetForm({
         initialValues?.weightLb != null
           ? String(initialValues.weightLb)
           : "",
+      weightIsBodyweight: initialValues?.weightIsBodyweight ?? false,
       reps: initialValues?.reps != null ? String(initialValues.reps) : "",
       restSeconds:
         initialValues?.restSeconds != null
@@ -149,6 +152,10 @@ export function SetForm({
   })
 
   React.useEffect(() => {
+    form.register("weightIsBodyweight")
+  }, [form])
+
+  React.useEffect(() => {
     form.reset(defaults)
   }, [defaults, form])
 
@@ -156,6 +163,7 @@ export function SetForm({
     const workoutValue = workoutValueToType(values.workoutType)
     const { showWeight, showReps, showDuration, showRest } =
       getWorkoutFieldVisibility(workoutValue)
+    const weightIsBodyweight = showWeight && Boolean(values.weightIsBodyweight)
     const performedAtISO =
       values.performedDate && values.performedTime
         ? ptDateToISO(values.performedDate, values.performedTime)
@@ -163,7 +171,9 @@ export function SetForm({
 
     await onSubmit({
       workoutType: workoutValue,
-      weightLb: showWeight ? toNumber(values.weightLb) : null,
+      weightLb:
+        showWeight && !weightIsBodyweight ? toNumber(values.weightLb) : null,
+      weightIsBodyweight,
       reps: showReps ? toNumber(values.reps) : null,
       restSeconds: showRest ? toNumber(values.restSeconds) : null,
       durationSeconds: showDuration ? toNumber(values.durationSeconds) : null,
@@ -221,6 +231,11 @@ export function SetForm({
     control: form.control,
     name: "durationSeconds",
   })
+  const weightIsBodyweight = useWatch({
+    control: form.control,
+    name: "weightIsBodyweight",
+  })
+  const isBodyweight = Boolean(weightIsBodyweight)
 
   React.useEffect(() => {
     if (!showDurationSlider) {
@@ -379,16 +394,49 @@ export function SetForm({
                   name="weightLb"
                   render={({ field }) => (
                     <FormItem className="col-span-1">
-                      <FormLabel>Weight (lb)</FormLabel>
-                      <FormControl>
-                        <Input
-                          inputMode="decimal"
-                          placeholder="135"
-                          className="h-11"
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                      </FormControl>
+                      <FormLabel>Weight</FormLabel>
+                      <div className="flex items-center gap-2">
+                        <FormControl>
+                          <Input
+                            inputMode="decimal"
+                            placeholder="135"
+                            className="h-11"
+                            {...field}
+                            value={isBodyweight ? "BW" : (field.value ?? "")}
+                            disabled={isBodyweight}
+                          />
+                        </FormControl>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            variant={isBodyweight ? "outline" : "secondary"}
+                            size="sm"
+                            className="h-11 px-3"
+                            aria-pressed={!isBodyweight}
+                            onClick={() =>
+                              form.setValue("weightIsBodyweight", false, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            lb
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={isBodyweight ? "secondary" : "outline"}
+                            size="sm"
+                            className="h-11 px-3"
+                            aria-pressed={isBodyweight}
+                            onClick={() =>
+                              form.setValue("weightIsBodyweight", true, {
+                                shouldDirty: true,
+                              })
+                            }
+                          >
+                            BW
+                          </Button>
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}

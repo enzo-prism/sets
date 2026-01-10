@@ -76,7 +76,7 @@ export function buildVolumeByWorkoutType(sets: LoggedSet[]) {
     if (!set.workoutType) {
       continue
     }
-    if (set.weightLb == null || set.reps == null) {
+    if (set.weightIsBodyweight || set.weightLb == null || set.reps == null) {
       continue
     }
     const volume = set.weightLb * set.reps
@@ -112,7 +112,7 @@ export function buildMaxWeightTrend(
     if (set.workoutType !== workoutType) {
       continue
     }
-    if (set.weightLb == null) {
+    if (set.weightIsBodyweight || set.weightLb == null) {
       continue
     }
     const key = toPtDayKey(set.performedAtISO)

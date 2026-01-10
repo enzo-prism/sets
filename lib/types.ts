@@ -6,6 +6,7 @@ export type LoggedSet = {
   id: string
   workoutType?: WorkoutType | null
   weightLb?: number | null
+  weightIsBodyweight?: boolean | null
   reps?: number | null
   restSeconds?: number | null
   durationSeconds?: number | null

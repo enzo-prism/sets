@@ -9,6 +9,7 @@ export type SupabaseSetRow = {
   device_id: string
   workout_type: string | null
   weight_lb: number | null
+  weight_is_bodyweight?: boolean | null
   reps: number | null
   rest_seconds: number | null
   duration_seconds?: number | null
@@ -41,6 +42,7 @@ export function mapRowToSet(row: SupabaseSetRow): LoggedSet {
     id: row.id,
     workoutType,
     weightLb: row.weight_lb,
+    weightIsBodyweight: row.weight_is_bodyweight ?? false,
     reps: row.reps,
     restSeconds: row.rest_seconds,
     durationSeconds: row.duration_seconds ?? null,
@@ -63,7 +65,8 @@ export function mapSetToRow(
     id: set.id,
     device_id: datasetId,
     workout_type: workoutType,
-    weight_lb: set.weightLb ?? null,
+    weight_lb: set.weightIsBodyweight ? null : set.weightLb ?? null,
+    weight_is_bodyweight: set.weightIsBodyweight ?? false,
     reps: set.reps ?? null,
     rest_seconds: set.restSeconds ?? null,
     performed_at_iso: set.performedAtISO ?? null,
